@@ -9,6 +9,7 @@ import { useFunnels, useFunnel } from '../hooks/useAnalytics'
 import { FunnelChart } from '../components/FunnelChart'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
+import { ExportButton } from '../components/ExportButton'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { FormModal } from '../components/FormModal'
 import { toastSuccess, toastError } from '../lib/toast'
@@ -339,16 +340,24 @@ function FunnelView({ funnel, siteId }: { funnel: FunnelDef; siteId: string }) {
         <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           {funnel.name}
         </h2>
-        {isDeveloper && (
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded"
-            style={{ color: 'var(--color-accent-red)', border: '1px solid var(--color-border)' }}
-          >
-            <Trash2 size={12} />
-            ลบ
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExportButton
+            headers={['ขั้นตอน', 'ประเภท', 'ค่า', 'เข้า', 'ผ่าน', 'อัตราแปลง (%)', 'อัตราออก (%)']}
+            rows={(data?.steps ?? []).map((s) => [s.label, s.type, s.value, s.entered, s.completed, (s.conversion_rate * 100).toFixed(1), (s.drop_off_rate * 100).toFixed(1)])}
+            filename={`funnel-${funnel.name}-${range.from}_${range.to}`}
+            disabled={isLoading || (data?.steps ?? []).length === 0}
+          />
+          {isDeveloper && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded"
+              style={{ color: 'var(--color-accent-red)', border: '1px solid var(--color-border)' }}
+            >
+              <Trash2 size={12} />
+              ลบ
+            </button>
+          )}
+        </div>
       </div>
       <ConfirmDialog
         open={showDeleteConfirm}

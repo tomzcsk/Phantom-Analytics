@@ -9,6 +9,7 @@ import { useSources, useDevices, useGeo, useTimezones, useRegions, useUtmSources
 import type { SourceStat } from '@phantom/shared'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
+import { ExportButton } from '../components/ExportButton'
 
 const SOURCE_COLORS: Record<SourceStat['source'], string> = {
   direct: '#4F8EF7',
@@ -131,6 +132,43 @@ export function Sources() {
     color: DEVICE_COLORS[i % DEVICE_COLORS.length] ?? '#4F8EF7',
   }))
 
+  function getExportData(): { headers: string[]; rows: unknown[][]; filename: string; disabled: boolean } {
+    const site = activeSite?.name ?? 'site'
+    const dr = `${range.from}_${range.to}`
+    switch (tab) {
+      case 'sources':
+        return {
+          headers: ['แหล่งที่มา', 'จำนวน', '%'],
+          rows: (sourcesData?.sources ?? []).map((s) => [SOURCE_LABELS[s.source], s.count, s.percentage.toFixed(1)]),
+          filename: `sources-${site}-${dr}`,
+          disabled: srcLoading || (sourcesData?.sources ?? []).length === 0,
+        }
+      case 'utm':
+        return {
+          headers: ['Source', 'Medium', 'Campaign', 'ผู้เข้าชม', '%'],
+          rows: (utmData ?? []).map((u) => [u.utm_source ?? '—', u.utm_medium ?? '—', u.utm_campaign ?? '—', u.visitors, u.percentage.toFixed(1)]),
+          filename: `utm-${site}-${dr}`,
+          disabled: utmLoading || (utmData ?? []).length === 0,
+        }
+      case 'devices':
+        return {
+          headers: ['ประเภทอุปกรณ์', 'จำนวน', '%'],
+          rows: (devicesData?.devices ?? []).map((d) => [d.device_type, d.count, d.percentage.toFixed(1)]),
+          filename: `devices-${site}-${dr}`,
+          disabled: devLoading || (devicesData?.devices ?? []).length === 0,
+        }
+      case 'geo':
+        return {
+          headers: ['รหัสประเทศ', 'ชื่อประเทศ', 'ผู้เข้าชม', '%'],
+          rows: (geoData ?? []).map((g) => [g.country_code, g.country_name, g.visitors, g.percentage.toFixed(1)]),
+          filename: `geo-${site}-${dr}`,
+          disabled: geoLoading || (geoData ?? []).length === 0,
+        }
+    }
+  }
+
+  const exportData = getExportData()
+
   return (
     <div className="p-6 max-w-screen-xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -187,6 +225,12 @@ export function Sources() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ExportButton
+            headers={exportData.headers}
+            rows={exportData.rows}
+            filename={exportData.filename}
+            disabled={exportData.disabled}
+          />
           <RefreshButton loading={srcFetching || devFetching || geoFetching || tzFetching || utmFetching} />
           <DatePresets loading={srcFetching || devFetching || geoFetching || tzFetching || utmFetching} />
         </div>

@@ -8,6 +8,7 @@ import { KPICard } from '../components/KPICard'
 import { TrendChart } from '../components/TrendChart'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
+import { ExportButton } from '../components/ExportButton'
 
 function timeAgoText(ts: string): string {
   const diff = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000))
@@ -55,6 +56,12 @@ export function Overview() {
         </h1>
 
         <div className="flex items-center gap-2">
+          <ExportButton
+            headers={['เวลา', 'การเข้าชม', 'ผู้เข้าชม', 'เซสชัน']}
+            rows={(timeseries ?? []).map((t) => [t.timestamp, t.pageviews, t.visitors, t.sessions])}
+            filename={`overview-${activeSite?.name ?? 'site'}-${range.from}_${range.to}`}
+            disabled={tsLoading || (timeseries ?? []).length === 0}
+          />
           <RefreshButton loading={ovFetching || tsFetching} />
           <DatePresets loading={ovFetching || tsFetching} />
         </div>

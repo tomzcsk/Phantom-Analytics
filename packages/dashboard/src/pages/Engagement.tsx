@@ -8,6 +8,7 @@ import { useDateRange } from '../context/DateRangeContext'
 import { useScrollDepth, useClicks, useClickVariables } from '../hooks/useAnalytics'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
+import { ExportButton } from '../components/ExportButton'
 import type { ClickVariable } from '../hooks/useAnalytics'
 import { ScrollDepthChart } from '../components/ScrollDepthChart'
 import { ClicksTable } from '../components/ClicksTable'
@@ -323,6 +324,16 @@ export function Engagement() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ExportButton
+            headers={tab === 'scroll'
+              ? ['URL', 'ความลึกเฉลี่ย (%)', 'ถึง 25%', 'ถึง 50%', 'ถึง 75%', 'ถึง 100%', 'การเข้าชม']
+              : ['คีย์', 'ชื่อ', 'จำนวนคลิก', 'ผู้คลิกไม่ซ้ำ']}
+            rows={tab === 'scroll'
+              ? (scrollDepth ?? []).map((s) => [s.url, s.avg_max_depth.toFixed(1), s.reached_25, s.reached_50, s.reached_75, s.reached_100, s.total_pageviews])
+              : (clicks ?? []).map((c) => [c.element_id, nameMap.get(c.element_id) ?? c.element_id, c.click_count, c.unique_clickers])}
+            filename={`${tab === 'scroll' ? 'scroll-depth' : 'clicks'}-${activeSite?.name ?? 'site'}-${range.from}_${range.to}`}
+            disabled={tab === 'scroll' ? (scrollLoading || (scrollDepth ?? []).length === 0) : (clicksLoading || (clicks ?? []).length === 0)}
+          />
           <RefreshButton loading={scrollFetching || clicksFetching} />
           <DatePresets loading={scrollFetching || clicksFetching} />
         </div>

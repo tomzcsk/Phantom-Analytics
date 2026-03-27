@@ -6,6 +6,7 @@ import { useSessions, useSessionEvents } from '../hooks/useAnalytics'
 import type { SessionRecord } from '../hooks/useAnalytics'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
+import { ExportButton } from '../components/ExportButton'
 
 function formatDuration(secs: number): string {
   if (secs < 60) return `${secs}s`
@@ -191,6 +192,12 @@ export function Journeys() {
           เส้นทาง
         </h1>
         <div className="flex items-center gap-2">
+          <ExportButton
+            headers={['เซสชัน', 'หน้าเข้า', 'หน้าออก', 'จำนวนหน้า', 'ระยะเวลา (วิ)', 'เข้าแล้วออก', 'เริ่มต้น']}
+            rows={(sessions ?? []).map((s) => [s.session_id.slice(0, 12), s.entry_page ?? '—', s.exit_page ?? '—', s.page_count, s.duration_seconds, s.is_bounce ? 'ใช่' : 'ไม่', s.started_at])}
+            filename={`journeys-${activeSite?.name ?? 'site'}-${range.from}_${range.to}`}
+            disabled={isLoading || (sessions ?? []).length === 0}
+          />
           <RefreshButton loading={isFetching} />
           <DatePresets loading={isFetching} />
         </div>

@@ -4,6 +4,7 @@ import { usePages } from '../hooks/useAnalytics'
 import { TopPagesTable } from '../components/TopPagesTable'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
+import { ExportButton } from '../components/ExportButton'
 
 export function Pages() {
   const { activeSite } = useSite()
@@ -19,6 +20,12 @@ export function Pages() {
           หน้าเว็บ
         </h1>
         <div className="flex items-center gap-2">
+          <ExportButton
+            headers={['URL', 'การเข้าชม', 'ผู้เข้าชมไม่ซ้ำ', 'เข้าแล้วออก (%)', 'อยู่นานเฉลี่ย (วิ)']}
+            rows={(pages ?? []).map((p) => [p.url, p.pageviews, p.visitors, (p.bounce_rate * 100).toFixed(1), p.avg_duration.toFixed(0)])}
+            filename={`pages-${activeSite?.name ?? 'site'}-${range.from}_${range.to}`}
+            disabled={isLoading || (pages ?? []).length === 0}
+          />
           <RefreshButton loading={isFetching} />
           <DatePresets loading={isFetching} />
         </div>
