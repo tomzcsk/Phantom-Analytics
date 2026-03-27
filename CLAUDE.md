@@ -1,35 +1,35 @@
 # CLAUDE.md — Phantom Analytics
 
-> This file is the AI's primary orientation document. Read it fully before touching any code.
-> Every decision in this project flows from here.
+> ไฟล์นี้คือเอกสารหลักสำหรับ AI — อ่านให้จบก่อนแตะโค้ดใดๆ
+> ทุกการตัดสินใจในโปรเจคนี้เริ่มจากที่นี่
 
 ---
 
-## Project Identity
+## ข้อมูลโปรเจค
 
-**Name:** Phantom Analytics  
-**Tagline:** Your data. Your server. Your rules.  
-**Type:** Self-hosted, privacy-first web analytics platform  
-**Stack:** Node.js + Fastify · PostgreSQL + TimescaleDB · Redis · React · Docker  
+**ชื่อ:** Phantom Analytics
+**สโลแกน:** ข้อมูลของคุณ เซิร์ฟเวอร์ของคุณ กฎของคุณ
+**ประเภท:** แพลตฟอร์มวิเคราะห์เว็บแบบ self-hosted ที่เน้นความเป็นส่วนตัว
+**สแตก:** Node.js + Fastify · PostgreSQL + TimescaleDB · Redis · React · Docker
 **Monorepo root:** `phantom-analytics/`
 
 ---
 
-## Essential Files Map
+## แผนผังไฟล์สำคัญ
 
-Before writing any code, read the file relevant to your task:
+ก่อนเขียนโค้ดใดๆ ให้อ่านไฟล์ที่เกี่ยวข้องกับงาน:
 
-| File | Purpose | Read when... |
-|------|---------|--------------|
-| `prd.md` | Product vision, features, constraints, success metrics | You need to understand *what* to build and *why* |
-| `techstack.md` | Full architecture, every library choice with rationale | You're making any technical decision or adding a dependency |
-| `UXUI.md` | Colors, typography, layout, components, interactions | You're touching the dashboard frontend |
-| `features.json` | All 47 features with status, acceptance criteria, checkpoints | You're picking up a task or tracking progress |
-| `CLAUDE.md` | This file — orientation, rules, patterns, philosophy | Always. First. |
+| ไฟล์ | วัตถุประสงค์ | อ่านเมื่อ... |
+|------|-------------|-------------|
+| `prd.md` | วิสัยทัศน์ผลิตภัณฑ์, ฟีเจอร์, ข้อจำกัด, ตัวชี้วัดความสำเร็จ | ต้องเข้าใจว่าจะสร้าง*อะไร*และ*ทำไม* |
+| `techstack.md` | สถาปัตยกรรมทั้งหมด, เหตุผลการเลือกไลบรารี | กำลังตัดสินใจด้านเทคนิคหรือเพิ่ม dependency |
+| `UXUI.md` | สี, ตัวอักษร, เลย์เอาต์, คอมโพเนนต์, interaction | กำลังแก้ไข dashboard frontend |
+| `features.json` | ฟีเจอร์ทั้งหมดพร้อมสถานะ, เกณฑ์การยอมรับ, checkpoint | กำลังหยิบงานหรือติดตามความคืบหน้า |
+| `CLAUDE.md` | ไฟล์นี้ — แนวทาง, กฎ, รูปแบบ, ปรัชญา | เสมอ ก่อนอื่น |
 
 ---
 
-## Repository Structure
+## โครงสร้าง Repository
 
 ```
 phantom-analytics/
@@ -45,12 +45,14 @@ phantom-analytics/
 │   │   │   │   ├── analytics.ts  # GET /api/analytics/*
 │   │   │   │   ├── realtime.ts   # GET /api/realtime/stream (SSE)
 │   │   │   │   ├── sites.ts      # CRUD /api/sites
-│   │   │   │   └── funnels.ts    # CRUD /api/funnels
+│   │   │   │   ├── funnels.ts    # CRUD /api/funnels
+│   │   │   │   └── activityLog.ts # GET /api/activity-logs
 │   │   │   ├── services/
 │   │   │   │   ├── geo.ts        # GeoIP lookup
 │   │   │   │   ├── ua.ts         # UA parsing + bot detection
 │   │   │   │   ├── buffer.ts     # Redis event buffer → PG batch write
-│   │   │   │   └── realtime.ts   # Redis pub/sub → SSE bridge
+│   │   │   │   ├── realtime.ts   # Redis pub/sub → SSE bridge
+│   │   │   │   └── activityLog.ts # บันทึก activity log
 │   │   │   ├── db/
 │   │   │   │   ├── prisma/
 │   │   │   │   │   └── schema.prisma
@@ -61,28 +63,42 @@ phantom-analytics/
 │   │   ├── src/
 │   │   │   ├── pages/
 │   │   │   │   ├── Overview.tsx
-│   │   │   │   ├── Realtime.tsx
 │   │   │   │   ├── Pages.tsx
+│   │   │   │   ├── Engagement.tsx   # พฤติกรรมผู้ใช้ (การเลื่อนดูหน้า + คลิก)
 │   │   │   │   ├── Sources.tsx
 │   │   │   │   ├── Funnels.tsx
-│   │   │   │   └── Journeys.tsx
+│   │   │   │   ├── Journeys.tsx
+│   │   │   │   ├── Settings.tsx
+│   │   │   │   ├── UserManagement.tsx
+│   │   │   │   └── ActivityLog.tsx
 │   │   │   ├── components/
 │   │   │   │   ├── KPICard.tsx
 │   │   │   │   ├── TrendChart.tsx
 │   │   │   │   ├── RealtimePanel.tsx
 │   │   │   │   ├── TopPagesTable.tsx
 │   │   │   │   ├── FunnelChart.tsx
-│   │   │   │   └── Sidebar.tsx
+│   │   │   │   ├── Sidebar.tsx
+│   │   │   │   ├── TopBar.tsx        # นาฬิกา + เลือก timezone
+│   │   │   │   ├── FormModal.tsx     # modal สำหรับฟอร์ม
+│   │   │   │   └── ConfirmDialog.tsx # modal ยืนยัน
 │   │   │   ├── hooks/
 │   │   │   │   ├── useAnalytics.ts    # TanStack Query wrappers
 │   │   │   │   └── useRealtime.ts     # SSE EventSource hook
+│   │   │   ├── context/
+│   │   │   │   ├── AuthContext.tsx
+│   │   │   │   ├── SiteContext.tsx
+│   │   │   │   ├── DateRangeContext.tsx
+│   │   │   │   └── TimezoneContext.tsx
+│   │   │   ├── lib/
+│   │   │   │   ├── api.ts
+│   │   │   │   └── toast.ts          # SweetAlert2 wrapper
 │   │   │   └── main.tsx
 │   │   └── package.json
-│   └── shared/           # Cross-package types
+│   └── shared/           # type ที่ใช้ร่วมกันข้าม package
 │       ├── src/
 │       │   ├── types/
 │       │   │   ├── events.ts         # EventPayload, EventType union
-│       │   │   ├── analytics.ts      # OverviewResponse, TimeseriesPoint, etc.
+│       │   │   ├── analytics.ts      # OverviewResponse, TimeseriesPoint ฯลฯ
 │       │   │   └── realtime.ts       # RealtimePayload
 │       │   └── index.ts
 │       └── package.json
@@ -91,206 +107,218 @@ phantom-analytics/
 │   ├── nginx.conf
 │   └── init.sql          # DB schema + TimescaleDB setup
 ├── scripts/
-│   ├── setup.sh           # One-command project bootstrap
-│   └── seed.ts            # Generate realistic test data
-├── prd.md
-├── techstack.md
-├── UXUI.md
-├── features.json
-└── CLAUDE.md              # ← You are here
+│   ├── setup.sh           # ติดตั้งโปรเจคด้วยคำสั่งเดียว
+│   └── seed.ts            # สร้างข้อมูลทดสอบ
+├── docs/
+│   ├── prd.md
+│   ├── techstack.md
+│   ├── UXUI.md
+│   ├── features.json
+│   ├── CHANGELOG.md
+│   └── USER_GUIDE.md
+└── CLAUDE.md              # ← คุณอยู่ที่นี่
 ```
 
 ---
 
-## Core Architectural Decisions
+## การตัดสินใจด้านสถาปัตยกรรมหลัก
 
-### Why Fastify over Express?
-3× throughput, schema-first validation, built-in TypeScript support. Fastify's plugin system keeps the codebase modular. See `techstack.md#2-backend-api`.
+### ทำไมเลือก Fastify แทน Express?
+throughput สูงกว่า 3 เท่า, schema-first validation, รองรับ TypeScript ในตัว — ระบบ plugin ของ Fastify ทำให้โค้ดเป็น modular ดู `techstack.md#2-backend-api`
 
-### Why TimescaleDB over plain PostgreSQL?
-`time_bucket()` replaces complex date math. Continuous aggregates pre-compute hourly/daily rollups — overview queries return in < 10ms even with millions of events. See `techstack.md#3-databases`.
+### ทำไมเลือก TimescaleDB แทน PostgreSQL ธรรมดา?
+`time_bucket()` แทนที่การคำนวณวันที่ซับซ้อน — continuous aggregate คำนวณรายชั่วโมง/รายวันล่วงหน้า ทำให้ query ภาพรวมตอบกลับใน < 10ms แม้มีหลายล้าน event ดู `techstack.md#3-databases`
 
-### Why SSE over WebSocket for real-time?
-SSE is unidirectional (server → client), which is all we need. It works over HTTP/1.1, survives proxies, and requires zero client library. EventSource API is native in every modern browser.
+### ทำไมเลือก SSE แทน WebSocket สำหรับ real-time?
+SSE เป็นทางเดียว (server → client) ซึ่งเพียงพอสำหรับเรา — ทำงานบน HTTP/1.1, ผ่าน proxy ได้, ไม่ต้องใช้ client library — EventSource API มีในทุก browser สมัยใหม่
 
-### Why fingerprinting over cookies for sessions?
-GDPR compliance by design. No cookie consent banner needed. Screen resolution + UA + language + timezone hash is stable enough for session tracking without storing any PII. See `prd.md#41-tracking-script-trackerjs`.
+### ทำไมใช้ fingerprint แทน cookie สำหรับ session?
+เพื่อให้สอดคล้องกับ GDPR โดยการออกแบบ — ไม่ต้องมี cookie consent banner — hash ของความละเอียดหน้าจอ + UA + ภาษา + timezone เสถียรพอสำหรับ session tracking โดยไม่เก็บ PII ดู `prd.md#41-tracking-script-trackerjs`
 
-### Why Redis buffer + batch writes?
-`/api/collect` must respond in < 50ms p99. Direct PostgreSQL writes add 10-30ms of latency and can't handle 10,000 events/min bursts. Redis List acts as a ring buffer; a background flush loop batch-inserts to PG every 1 second. See `techstack.md#redis-7`.
+### ทำไมใช้ Redis buffer + batch writes?
+`/api/collect` ต้องตอบกลับใน < 50ms p99 — การเขียน PostgreSQL ตรงๆ เพิ่ม latency 10-30ms และรับไม่ไหว 10,000 events/นาที — Redis List ทำหน้าที่เป็น ring buffer; background flush loop จะ batch INSERT เข้า PG ทุก 1 วินาที ดู `techstack.md#redis-7`
 
 ---
 
-## Data Flow (Mental Model)
+## การไหลของข้อมูล (Mental Model)
 
 ```
-User visits website
-  ↓ tracker.js auto-fires pageview
+ผู้ใช้เข้าเว็บไซต์
+  ↓ tracker.js ส่ง pageview อัตโนมัติ
   ↓ navigator.sendBeacon / fetch POST /api/collect
-  ↓ Fastify validates (Zod) + enriches (GeoIP + UA) + bot-filters
-  ↓ Push to Redis List (event buffer)
-  ↓ Redis Pub/Sub publishes to site_<id> channel  ← SSE listeners get this immediately
-  ↓ Background flush (every 1s): Redis List → PostgreSQL batch INSERT
-  ↓ TanStack Query polls /api/analytics/* (every 30s for historical)
-  ↓ Dashboard charts update
+  ↓ Fastify validate (Zod) + เพิ่มข้อมูล (GeoIP + UA) + กรอง bot
+  ↓ push เข้า Redis List (event buffer)
+  ↓ Redis Pub/Sub publish ไปยัง channel site_<id>  ← SSE listener ได้รับทันที
+  ↓ Background flush (ทุก 1 วินาที): Redis List → PostgreSQL batch INSERT
+  ↓ TanStack Query poll /api/analytics/* (ทุก 30 วินาทีสำหรับข้อมูลย้อนหลัง)
+  ↓ กราฟใน Dashboard อัปเดต
 ```
 
 ---
 
-## Feature Checkpoint Process
+## ขั้นตอน Feature Checkpoint
 
-**Before starting a feature:**
-1. Open `features.json`
-2. Find the feature by ID (e.g., `E2-F4`)
-3. Read `acceptance_criteria` — these are your definition of done
-4. Note the `checkpoint` — this is how you verify it's complete
-5. Set status to `"in_progress"`
+**ก่อนเริ่มทำฟีเจอร์:**
+1. เปิด `features.json`
+2. หาฟีเจอร์ตาม ID (เช่น `E2-F4`)
+3. อ่าน `acceptance_criteria` — นี่คือเกณฑ์ว่าเสร็จแล้ว
+4. ดู `checkpoint` — นี่คือวิธียืนยันว่าเสร็จสมบูรณ์
+5. เปลี่ยนสถานะเป็น `"in_progress"`
 
-**After completing a feature:**
-1. Verify the checkpoint command/test passes
-2. Set status to `"done"` in `features.json`
-3. Update `overall_progress.completed` count
-4. Recalculate `overall_progress.percentage`
+**หลังทำฟีเจอร์เสร็จ:**
+1. ยืนยันว่า checkpoint command/test ผ่าน
+2. เปลี่ยนสถานะเป็น `"done"` ใน `features.json`
+3. อัปเดตจำนวน `overall_progress.completed`
+4. คำนวณ `overall_progress.percentage` ใหม่
 
-**Implementation order:** Follow `features.json#implementation_order` array. Infrastructure first, then API, then frontend.
+**ลำดับการพัฒนา:** ทำตาม `features.json#implementation_order` — Infrastructure ก่อน แล้ว API แล้ว frontend
 
 ---
 
-## Critical Constraints
+## ข้อจำกัดสำคัญ
 
-### Tracker Script Size
-The built `tracker.js` MUST stay under 5KB gzipped. Check after every change:
+### ขนาด Tracker Script
+`tracker.js` ที่ build แล้ว**ต้อง**ไม่เกิน 5KB gzipped — ตรวจสอบทุกครั้งที่แก้ไข:
 ```bash
 pnpm --filter tracker build && gzip -c packages/tracker/dist/tracker.min.js | wc -c
 ```
-If it exceeds 5120 bytes, find what to remove before committing.
+ถ้าเกิน 5120 bytes ต้องหาสิ่งที่ตัดได้ก่อน commit
 
-### No PII in Database
-Never store: raw IP addresses (hash them), full user agent strings (parse to categories only), names, emails, or any user-identifiable data. The system must be GDPR-compliant by architecture, not by policy.
+### ห้ามเก็บ PII ในฐานข้อมูล
+ห้ามเก็บ: IP address ดิบ (ต้อง hash), UA string เต็ม (แยกเป็นหมวดหมู่เท่านั้น), ชื่อ, อีเมล หรือข้อมูลที่ระบุตัวบุคคลได้ — ระบบต้องสอดคล้องกับ GDPR โดยสถาปัตยกรรม ไม่ใช่โดยนโยบาย
 
 ### TimescaleDB Queries
-Always use `time_bucket()` for time-series aggregation. Never use `DATE_TRUNC` with GROUP BY on the raw events table — it won't use the hypertable partitioning. Use continuous aggregate views (`pageviews_hourly`, `pageviews_daily`) for dashboard queries.
+ใช้ `time_bucket()` เสมอสำหรับ time-series aggregation — ห้ามใช้ `DATE_TRUNC` กับ GROUP BY บนตาราง events ดิบ เพราะจะไม่ใช้ hypertable partitioning — ใช้ continuous aggregate views (`pageviews_hourly`, `pageviews_daily`) สำหรับ query ของ dashboard
 
-### SSE Connection Limit
-Each SSE connection holds open an HTTP connection. Nginx is configured with `proxy_read_timeout 86400s`. Do NOT use long-polling as a fallback — SSE is the only real-time mechanism.
+### Timezone ใน Analytics Query
+ทุก analytics endpoint รับ `tz` query param (default: `Asia/Bangkok`) — ใช้ `AT TIME ZONE` ใน SQL เพื่อแปลง date boundary ตาม timezone ที่เลือก
 
-### Redis Pub/Sub Channel Naming
-Always use `site_<site_id>` as the channel name. The SSE handler subscribes per site. Do NOT use a single global channel.
+### ขีดจำกัด SSE Connection
+SSE แต่ละ connection ค้าง HTTP connection ไว้ — Nginx ตั้ง `proxy_read_timeout 86400s` — ห้ามใช้ long-polling เป็น fallback, SSE เป็นกลไก real-time เพียงอย่างเดียว
+
+### การตั้งชื่อ Redis Pub/Sub Channel
+ใช้ `site_<site_id>` เป็นชื่อ channel เสมอ — SSE handler subscribe ต่อ site — ห้ามใช้ global channel เดียว
 
 ---
 
-## Code Patterns & Conventions
+## รูปแบบโค้ดและข้อตกลง
 
 ### TypeScript
-- All types shared across packages live in `packages/shared/src/types/`
-- Never use `any`. Use `unknown` + type guards when input is uncertain.
-- Event payload types defined in `shared/types/events.ts` — use them everywhere
+- type ที่ใช้ร่วมกันข้าม package อยู่ใน `packages/shared/src/types/`
+- ห้ามใช้ `any` — ใช้ `unknown` + type guards เมื่อ input ไม่แน่นอน
+- type ของ event payload กำหนดใน `shared/types/events.ts` — ใช้ทุกที่
 
-### Fastify Route Pattern
+### รูปแบบ Fastify Route
 ```typescript
-// Every route follows this exact pattern
+// ทุก route ตามรูปแบบนี้
 fastify.post<{ Body: CollectPayload }>(
   '/api/collect',
   { schema: { body: collectSchema } },
   async (request, reply) => {
-    // 1. Enrich (geo, ua)
-    // 2. Filter (bot check)
-    // 3. Buffer (Redis push)
-    // 4. Publish (Redis pub/sub for SSE)
+    // 1. เพิ่มข้อมูล (geo, ua)
+    // 2. กรอง (ตรวจ bot)
+    // 3. Buffer (push เข้า Redis)
+    // 4. Publish (Redis pub/sub สำหรับ SSE)
     return reply.code(202).send({ ok: true })
   }
 )
 ```
 
-### React Query Pattern
+### รูปแบบ React Query
 ```typescript
-// Every data fetch uses this hook pattern
+// ทุกการ fetch ข้อมูลใช้รูปแบบ hook นี้
 export function useOverview(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
   return useQuery({
-    queryKey: ['overview', siteId, range],
-    queryFn: () => api.getOverview(siteId, range),
-    staleTime: 30_000,       // 30s — don't refetch too aggressively
-    refetchInterval: 60_000  // Background refresh every minute
+    queryKey: ['overview', siteId, range, timezone.value],
+    queryFn: () => api.getOverview(siteId, range, timezone.value),
+    staleTime: 30_000,       // 30 วินาที — ไม่ refetch ถี่เกินไป
+    refetchInterval: 60_000  // refresh เบื้องหลังทุกนาที
   })
 }
 ```
 
-### Dashboard Color Usage
-Always use the tokens from `UXUI.md#color-system`. Hardcoded hex values are forbidden in React components. Use Tailwind classes that map to the design tokens:
-- Primary metric charts: `text-blue-400` → `#4F8EF7`
-- Positive trends: `text-green-400` → `#36D963`
-- Negative trends: `text-red-400` → `#F75252`
-- Card backgrounds: `bg-[#1A1D27]`
+### การใช้สีใน Dashboard
+ใช้ token จาก `UXUI.md#color-system` เสมอ — ห้ามใช้ค่า hex ตรงๆ ใน React component — ใช้ CSS variable:
+- กราฟตัวชี้วัดหลัก: `var(--color-accent-blue)` → `#4F8EF7`
+- แนวโน้มบวก: `var(--color-accent-green)` → `#36D963`
+- แนวโน้มลบ: `var(--color-accent-red)` → `#F75252`
+- พื้นหลังการ์ด: `var(--color-bg-card)` → `#1A1D27`
 
-### Error Handling
-Every async operation must have explicit error handling. Never let a failed GeoIP lookup or bot-check crash the collect endpoint. Wrap enrichment steps in try/catch, fall back to `null` values gracefully.
+### UI Pattern
+- ทุก action (สร้าง/แก้ไข/ลบ/ยืนยัน) ต้องใช้ **modal popup** — ใช้ `FormModal` สำหรับฟอร์ม, `ConfirmDialog` สำหรับยืนยัน
+- การแจ้งเตือนสำเร็จ/ล้มเหลว ใช้ **SweetAlert2 toast** ผ่าน `lib/toast.ts`
+- select dropdown ต้องมี ChevronDown icon + สไตล์ที่แตกต่างจาก input
+
+### การจัดการ Error
+ทุก async operation ต้องมีการจัดการ error อย่างชัดเจน — ห้ามปล่อยให้ GeoIP lookup หรือ bot-check ที่ล้มเหลวทำให้ collect endpoint พัง — ครอบ enrichment steps ด้วย try/catch แล้ว fallback เป็น `null`
 
 ---
 
-## Local Development Commands
+## คำสั่งสำหรับพัฒนาในเครื่อง
 
 ```bash
-# First time setup
+# ติดตั้งครั้งแรก
 ./scripts/setup.sh
 
-# Start full stack (postgres + redis + api + dashboard + nginx)
+# เริ่มระบบทั้งหมด (postgres + redis + api + dashboard + nginx)
 docker compose up -d
 
-# API development (hot reload)
+# พัฒนา API (hot reload)
 pnpm --filter api dev
 
-# Dashboard development (HMR)
+# พัฒนา Dashboard (HMR)
 pnpm --filter dashboard dev
 
-# Build tracker script + check size
+# Build tracker script + ตรวจสอบขนาด
 pnpm --filter tracker build
 gzip -c packages/tracker/dist/tracker.min.js | wc -c
 
-# Run all tests
+# รันเทสต์ทั้งหมด
 pnpm test
 
-# Seed test data (generates 30 days of realistic events)
+# สร้างข้อมูลทดสอบ (30 วันของ event)
 pnpm --filter api tsx scripts/seed.ts
 
-# View logs
+# ดู log
 docker compose logs -f api
 docker compose logs -f postgres
 ```
 
 ---
 
-## Environment Variables
+## ตัวแปรสภาพแวดล้อม
 
 ```bash
-# Required in .env at project root
+# ต้องตั้งค่าใน .env ที่ root ของโปรเจค
 DATABASE_URL=postgresql://phantom:phantom@localhost:5432/phantom_analytics
 REDIS_URL=redis://localhost:6379
 API_PORT=3001
-JWT_SECRET=<32-char random string>
+JWT_SECRET=<สตริงสุ่ม 32 ตัวอักษร>
 NODE_ENV=development
 ```
 
 ---
 
-## Testing Philosophy
+## แนวคิดการทดสอบ
 
-Every feature has a `checkpoint` in `features.json`. The checkpoint is the minimum bar — a concrete, verifiable command or manual test that proves the feature works. Tests (Vitest) go deeper and provide regression safety.
+ทุกฟีเจอร์มี `checkpoint` ใน `features.json` — checkpoint คือเกณฑ์ขั้นต่ำ เป็นคำสั่งหรือเทสต์ที่พิสูจน์ว่าฟีเจอร์ทำงาน — เทสต์ (Vitest) ลงลึกกว่าและช่วยป้องกัน regression
 
-Run `pnpm test` before every commit. The pre-commit hook enforces this.
+รัน `pnpm test` ก่อนทุก commit — pre-commit hook บังคับใช้
 
 ---
 
-## What NOT to Build in v1.0
+## สิ่งที่ไม่ต้องสร้างใน v1.0
 
-From `prd.md#6-out-of-scope-v10` — do not implement:
-- User-level tracking with identity (logins, user IDs)
+จาก `prd.md#6-out-of-scope-v10` — ห้ามสร้าง:
+- การ track ระดับผู้ใช้ด้วย identity (login, user ID)
 - A/B testing
-- Heatmaps or session recording
-- Email reports or alerts
+- Heatmap หรือ session recording
+- รายงานทางอีเมลหรือการแจ้งเตือน
 - Mobile SDK
-- Multi-tenant billing
+- ระบบเรียกเก็บเงินแบบ multi-tenant
 
-If a future request asks for these, reply: "Out of scope for v1.0 — see prd.md#6."
+ถ้ามีคำขอเหล่านี้ในอนาคต ให้ตอบ: "นอกขอบเขต v1.0 — ดู prd.md#6"
 
 ---
 

@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { useSite } from '../context/SiteContext'
 import { useDateRange } from '../context/DateRangeContext'
-import { useSources, useDevices } from '../hooks/useAnalytics'
+import { useSources, useDevices, useGeo, useTimezones, useRegions } from '../hooks/useAnalytics'
 import type { SourceStat } from '@phantom/shared'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
@@ -81,7 +81,15 @@ function BarTooltip({ active, payload, label }: BarTooltipProps) {
   )
 }
 
-type Tab = 'sources' | 'devices'
+type Tab = 'sources' | 'devices' | 'geo'
+
+function countryFlag(code: string): string {
+  return code
+    .toUpperCase()
+    .split('')
+    .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+    .join('')
+}
 
 export function Sources() {
   const { activeSite } = useSite()
@@ -91,6 +99,10 @@ export function Sources() {
 
   const { data: sourcesData, isLoading: srcLoading, isFetching: srcFetching } = useSources(siteId, range)
   const { data: devicesData, isLoading: devLoading, isFetching: devFetching } = useDevices(siteId, range)
+  const { data: geoData, isLoading: geoLoading, isFetching: geoFetching } = useGeo(siteId, range)
+  const { data: tzData, isLoading: tzLoading, isFetching: tzFetching } = useTimezones(siteId, range)
+  const [selectedCountry, setSelectedCountry] = useState<{ code: string; name: string } | null>(null)
+  const { data: regionData, isLoading: regionLoading } = useRegions(siteId, range, selectedCountry?.code ?? '')
 
   const pieData = (sourcesData?.sources ?? []).map((s) => ({
     name: SOURCE_LABELS[s.source],
@@ -150,12 +162,22 @@ export function Sources() {
             >
               อุปกรณ์
             </button>
+            <button
+              onClick={() => setTab('geo')}
+              className="px-3 py-1 rounded-md text-sm font-medium transition-colors"
+              style={{
+                background: tab === 'geo' ? 'var(--color-bg-surface)' : 'transparent',
+                color: tab === 'geo' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+              }}
+            >
+              ภูมิศาสตร์
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <RefreshButton loading={srcFetching || devFetching} />
-          <DatePresets loading={srcFetching || devFetching} />
+          <RefreshButton loading={srcFetching || devFetching || geoFetching || tzFetching} />
+          <DatePresets loading={srcFetching || devFetching || geoFetching || tzFetching} />
         </div>
       </div>
 
@@ -334,6 +356,152 @@ export function Sources() {
               <p className="text-sm text-center py-8" style={{ color: 'var(--color-text-muted)' }}>ไม่มีข้อมูล</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Geography tab */}
+      {tab === 'geo' && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {/* Top countries */}
+          <div
+            className="rounded-xl p-5"
+            style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+          >
+            <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              ประเทศยอดนิยม
+            </h2>
+            {geoLoading ? (
+              <div className="flex flex-col gap-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse rounded h-6" style={{ background: 'var(--color-bg-surface)' }} />
+                ))}
+              </div>
+            ) : (geoData ?? []).length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {(geoData ?? []).map((g) => {
+                  const max = geoData![0]?.visitors ?? 1
+                  const pct = Math.max(4, (g.visitors / max) * 100)
+                  return (
+                    <div
+                      key={g.country_code}
+                      onClick={() => setSelectedCountry(selectedCountry?.code === g.country_code ? null : { code: g.country_code, name: g.country_name })}
+                      className="rounded-lg px-2 py-1.5 -mx-2 transition-colors"
+                      style={{ background: selectedCountry?.code === g.country_code ? 'var(--color-bg-surface)' : 'transparent', cursor: 'pointer' }}
+                    >
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span style={{ color: 'var(--color-text-primary)' }}>
+                          {countryFlag(g.country_code)} {g.country_name}
+                        </span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                          {g.visitors.toLocaleString()} ({g.percentage.toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="rounded-full overflow-hidden" style={{ background: 'var(--color-bg-surface)', height: 4 }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: selectedCountry?.code === g.country_code ? 'var(--color-accent-purple)' : 'var(--color-accent-blue)' }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>
+                ไม่มีข้อมูลประเทศในช่วงนี้
+              </p>
+            )}
+          </div>
+
+          {/* Top timezones */}
+          <div
+            className="rounded-xl p-5"
+            style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+          >
+            <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Timezone ยอดนิยม
+            </h2>
+            {tzLoading ? (
+              <div className="flex flex-col gap-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse rounded h-6" style={{ background: 'var(--color-bg-surface)' }} />
+                ))}
+              </div>
+            ) : (tzData ?? []).length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {(tzData ?? []).map((t) => {
+                  const max = tzData![0]?.visitors ?? 1
+                  const pct = Math.max(4, (t.visitors / max) * 100)
+                  return (
+                    <div key={t.timezone}>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span style={{ color: 'var(--color-text-primary)' }}>{t.timezone}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                          {t.visitors.toLocaleString()} ({t.percentage.toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="rounded-full overflow-hidden" style={{ background: 'var(--color-bg-surface)', height: 4 }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--color-accent-green)' }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>
+                ไม่มีข้อมูล Timezone ในช่วงนี้
+              </p>
+            )}
+          </div>
+
+          {/* Region breakdown — shows when a country is selected */}
+          {selectedCountry && (
+          <div
+            className="col-span-1 lg:col-span-2 rounded-xl p-5"
+            style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                {countryFlag(selectedCountry.code)} จังหวัด/รัฐ — {selectedCountry.name}
+              </h2>
+              <button
+                onClick={() => setSelectedCountry(null)}
+                className="text-xs px-2 py-1 rounded-lg"
+                style={{ color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}
+              >
+                ปิด
+              </button>
+            </div>
+            {regionLoading ? (
+              <div className="flex flex-col gap-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse rounded h-6" style={{ background: 'var(--color-bg-surface)' }} />
+                ))}
+              </div>
+            ) : (regionData ?? []).length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
+                {(regionData ?? []).map((r) => {
+                  const max = regionData![0]?.visitors ?? 1
+                  const pct = Math.max(4, (r.visitors / max) * 100)
+                  return (
+                    <div key={r.region}>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span style={{ color: 'var(--color-text-primary)' }}>{r.region}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                          {r.visitors.toLocaleString()} ({r.percentage.toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="rounded-full overflow-hidden" style={{ background: 'var(--color-bg-surface)', height: 4 }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--color-accent-purple)' }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-center py-6" style={{ color: 'var(--color-text-muted)' }}>
+                ไม่มีข้อมูลจังหวัด/รัฐ
+              </p>
+            )}
+          </div>
+          )}
         </div>
       )}
     </div>

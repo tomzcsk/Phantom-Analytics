@@ -10,6 +10,8 @@ import type {
   FunnelResult,
   ScrollDepthStat,
   ClickStat,
+  TimezoneStat,
+  RegionStat,
 } from '@phantom/shared'
 import { apiGet } from '../lib/api'
 import { useTimezone } from '../context/TimezoneContext'
@@ -83,6 +85,28 @@ export function useGeo(siteId: string, range: DateRange) {
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
+  })
+}
+
+export function useTimezones(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['timezones', siteId, range, timezone.value],
+    queryFn: () => apiGet<TimezoneStat[]>(`/analytics/timezones?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useRegions(siteId: string, range: DateRange, countryCode: string) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['regions', siteId, range, timezone.value, countryCode],
+    queryFn: () => apiGet<RegionStat[]>(`/analytics/regions?${rangeParams(siteId, range, timezone.value)}&country_code=${encodeURIComponent(countryCode)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId) && Boolean(countryCode),
   })
 }
 

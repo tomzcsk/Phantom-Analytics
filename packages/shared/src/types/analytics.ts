@@ -144,6 +144,22 @@ export interface GeoStat {
 }
 
 /**
+ * Timezone breakdown stat.
+ * Returned from GET /api/analytics/timezones.
+ */
+export interface TimezoneStat {
+  timezone: string
+  visitors: number
+  percentage: number
+}
+
+export interface RegionStat {
+  region: string
+  visitors: number
+  percentage: number
+}
+
+/**
  * A single step definition in a funnel.
  * Steps are ordered by index (0-based).
  */

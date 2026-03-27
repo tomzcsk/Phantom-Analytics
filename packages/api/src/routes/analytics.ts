@@ -14,8 +14,11 @@ import type {
   FunnelStep,
   ScrollDepthStat,
   ClickStat,
+  TimezoneStat,
+  RegionStat,
 } from '@phantom/shared'
 import { prisma } from '../db/client.js'
+import { getRegionName } from '../services/regionNames.js'
 import { requireAuth } from './auth.js'
 import { canAccessSite } from '../services/siteAccess.js'
 
@@ -719,6 +722,80 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
       url: r.url,
       click_count: n(r.click_count),
       unique_clickers: n(r.unique_clickers),
+    }))
+
+    return reply.send(stats)
+  })
+
+  // ── Timezones ──────────────────────────────────────────────────────────────
+
+  type TimezoneRow = { timezone: string; count: bigint }
+
+  app.get('/analytics/timezones', { schema: { querystring: siteRangeSchema } }, async (request, reply) => {
+    const { site_id, from, to, tz } = request.query
+    const { fromTs, toTs } = tzBounds(from, to, tz)
+
+    const rows = await prisma.$queryRaw<TimezoneRow[]>`
+      SELECT
+        timezone,
+        COUNT(DISTINCT session_id)::bigint AS count
+      FROM events
+      WHERE site_id       = ${site_id}::uuid
+        AND event_type    = 'pageview'
+        AND timezone IS NOT NULL
+        AND timestamp    >= ${fromTs}
+        AND timestamp    <  ${toTs}
+      GROUP BY timezone
+      ORDER BY count DESC
+      LIMIT 20
+    `
+
+    const total = rows.reduce((s, r) => s + n(r.count), 0) || 1
+
+    const stats: TimezoneStat[] = rows.map((r) => ({
+      timezone: r.timezone,
+      visitors: n(r.count),
+      percentage: Math.round((n(r.count) / total) * 1000) / 10,
+    }))
+
+    return reply.send(stats)
+  })
+
+  // ── Regions (by country) ───────────────────────────────────────────────────
+
+  const regionQuerySchema = siteRangeSchema.extend({
+    country_code: z.string().length(2),
+  })
+
+  type RegionRow = { region: string; count: bigint }
+
+  app.get('/analytics/regions', { schema: { querystring: regionQuerySchema } }, async (request, reply) => {
+    const { site_id, from, to, tz, country_code } = request.query
+    const { fromTs, toTs } = tzBounds(from, to, tz)
+
+    const rows = await prisma.$queryRaw<RegionRow[]>`
+      SELECT
+        region,
+        COUNT(DISTINCT session_id)::bigint AS count
+      FROM events
+      WHERE site_id       = ${site_id}::uuid
+        AND event_type    = 'pageview'
+        AND country_code  = ${country_code}
+        AND region IS NOT NULL
+        AND region != ''
+        AND timestamp    >= ${fromTs}
+        AND timestamp    <  ${toTs}
+      GROUP BY region
+      ORDER BY count DESC
+      LIMIT 20
+    `
+
+    const total = rows.reduce((s, r) => s + n(r.count), 0) || 1
+
+    const stats: RegionStat[] = rows.map((r) => ({
+      region: getRegionName(country_code, r.region),
+      visitors: n(r.count),
+      percentage: Math.round((n(r.count) / total) * 1000) / 10,
     }))
 
     return reply.send(stats)

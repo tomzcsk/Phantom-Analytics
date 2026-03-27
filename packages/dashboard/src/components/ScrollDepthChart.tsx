@@ -26,7 +26,7 @@ export function ScrollDepthChart({ data, loading = false }: ScrollDepthChartProp
         style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
       >
         <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-          ระดับการเลื่อน
+          การเลื่อนดูหน้า
         </h2>
         <div className="flex flex-col gap-4">
           {[...Array(5)].map((_, i) => (
@@ -44,10 +44,10 @@ export function ScrollDepthChart({ data, loading = false }: ScrollDepthChartProp
         style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
       >
         <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-          ระดับการเลื่อน
+          การเลื่อนดูหน้า
         </h2>
         <p className="text-sm text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
-          ไม่มีข้อมูลระดับการเลื่อนในช่วงนี้
+          ไม่มีข้อมูลในช่วงนี้
         </p>
       </div>
     )
@@ -60,7 +60,7 @@ export function ScrollDepthChart({ data, loading = false }: ScrollDepthChartProp
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-          ระดับการเลื่อน
+          การเลื่อนดูหน้า
         </h2>
         {/* Legend */}
         <div className="flex items-center gap-3">

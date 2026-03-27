@@ -293,7 +293,7 @@ export function Engagement() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-            การมีส่วนร่วม
+            พฤติกรรมผู้ใช้
           </h1>
           <div
             className="flex items-center gap-1 rounded-lg p-1"
@@ -307,7 +307,7 @@ export function Engagement() {
                 color: tab === 'scroll' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
               }}
             >
-              ระดับการเลื่อน
+              การเลื่อนดูหน้า
             </button>
             <button
               onClick={() => setTab('clicks')}

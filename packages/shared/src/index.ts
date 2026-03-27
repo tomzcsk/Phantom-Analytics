@@ -33,6 +33,8 @@ export type {
   SessionEvent,
   ScrollDepthStat,
   ClickStat,
+  TimezoneStat,
+  RegionStat,
 } from './types/analytics.js'
 
 // Auth types

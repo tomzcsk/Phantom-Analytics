@@ -10,7 +10,7 @@ import { FormModal } from './FormModal'
 const NAV_ITEMS = [
   { to: '/overview', icon: LayoutDashboard, label: 'ภาพรวม' },
   { to: '/pages', icon: FileText, label: 'หน้าเว็บ' },
-  { to: '/engagement', icon: MousePointerClick, label: 'การมีส่วนร่วม' },
+  { to: '/engagement', icon: MousePointerClick, label: 'พฤติกรรมผู้ใช้' },
   { to: '/sources', icon: Globe, label: 'แหล่งที่มา' },
   { to: '/funnels', icon: Filter, label: 'ช่องทาง' },
   { to: '/journeys', icon: GitBranch, label: 'เส้นทาง' },
