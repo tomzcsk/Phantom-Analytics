@@ -10,6 +10,7 @@
 7. [Next.js / React SPA](#7-nextjs--react-spa)
 8. [Timezone](#8-timezone)
 9. [Activity Log](#9-activity-log)
+10. [Content-Security-Policy (CSP)](./CSP_GUIDE.md)
 
 ---
 
