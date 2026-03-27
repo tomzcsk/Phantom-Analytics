@@ -1,0 +1,179 @@
+// Phantom Analytics — Prisma Schema
+//
+// Note: The events table is a TimescaleDB hypertable.
+// Prisma manages the schema but TimescaleDB-specific features
+// (create_hypertable, continuous aggregates) are handled in docker/init.sql.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Site {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  domain         String    @unique
+  tracking_token String    @unique @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  deleted_at     DateTime? @db.Timestamptz
+
+  events          Event[]
+  sessions        Session[]
+  funnels         Funnel[]
+  click_variables ClickVariable[]
+  user_sites      UserSite[]
+
+  @@map("sites")
+}
+
+model Event {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id    String   @db.Uuid
+  session_id String   // hashed fingerprint — no PII
+  event_type String   // 'pageview' | 'event' | 'session_start' | 'session_end' | 'funnel_step' | 'scroll' | 'click'
+  url        String
+  referrer   String?
+  title      String?
+
+  // Server-enriched geo fields
+  country_code String? @db.Char(2)
+  region       String?
+
+  // Server-enriched UA fields
+  device_type String? // 'desktop' | 'mobile' | 'tablet'
+  browser     String?
+  os          String?
+
+  // Client-reported device context
+  screen_width  Int?
+  screen_height Int?
+  language      String?
+  timezone      String?
+
+  // Custom event fields
+  custom_name       String?
+  custom_properties Json?   @db.JsonB
+
+  // Timing
+  time_on_page Int?      // seconds
+  timestamp    DateTime  @db.Timestamptz
+
+  site Site @relation(fields: [site_id], references: [id])
+
+  @@index([site_id, timestamp])
+  @@index([session_id])
+  @@index([site_id, url])
+  @@map("events")
+}
+
+model Session {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id          String   @db.Uuid
+  session_id       String   // same hashed fingerprint as events.session_id
+  entry_page       String?
+  exit_page        String?
+  page_count       Int      @default(0)
+  duration_seconds Int      @default(0)
+  is_bounce        Boolean  @default(false)
+  started_at       DateTime @db.Timestamptz
+  ended_at         DateTime? @db.Timestamptz
+
+  site Site @relation(fields: [site_id], references: [id])
+
+  @@unique([site_id, session_id])
+  @@index([site_id, started_at])
+  @@index([session_id])
+  @@map("sessions")
+}
+
+model Funnel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id    String   @db.Uuid
+  name       String
+  steps      Json     @db.JsonB // FunnelStep[]
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  site         Site          @relation(fields: [site_id], references: [id])
+  funnel_events FunnelEvent[]
+
+  @@map("funnels")
+}
+
+model FunnelEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  funnel_id    String   @db.Uuid
+  session_id   String
+  step_index   Int
+  completed_at DateTime @db.Timestamptz
+
+  funnel Funnel @relation(fields: [funnel_id], references: [id])
+
+  @@index([funnel_id, step_index])
+  @@index([session_id])
+  @@map("funnel_events")
+}
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username      String    @unique
+  password_hash String
+  display_name  String
+  role          String    @default("viewer")
+  access_token  String?   @unique
+  created_at    DateTime  @default(now()) @db.Timestamptz()
+  updated_at    DateTime  @default(now()) @updatedAt @db.Timestamptz()
+  last_login_at DateTime? @db.Timestamptz()
+
+  user_sites    UserSite[]
+  activity_logs ActivityLog[]
+
+  @@map("users")
+}
+
+model ActivityLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  user_name   String
+  action      String   // create, update, delete, login, logout, login_failed
+  entity_type String   // site, user, funnel, click_variable, auth
+  entity_id   String?  @db.Uuid
+  description String
+  metadata    Json?    @db.JsonB
+  site_id     String?  @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([created_at])
+  @@index([user_id])
+  @@index([entity_type])
+  @@map("activity_logs")
+}
+
+model UserSite {
+  user_id String @db.Uuid
+  site_id String @db.Uuid
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  site    Site   @relation(fields: [site_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, site_id])
+  @@map("user_sites")
+}
+
+model ClickVariable {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id    String   @db.Uuid
+  key        String   // data-pa-click value e.g. "click_register"
+  name       String   // friendly name e.g. "ปุ่มสมัคร"
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  site Site @relation(fields: [site_id], references: [id])
+
+  @@unique([site_id, key])
+  @@map("click_variables")
+}

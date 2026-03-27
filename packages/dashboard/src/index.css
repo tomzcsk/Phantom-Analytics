@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/*
+ * Phantom Analytics — Global Styles
+ *
+ * Color tokens from UXUI.md:
+ *   --color-bg-base:    #0F1117  (deepest background)
+ *   --color-bg-card:    #1A1D27  (card backgrounds)
+ *   --color-bg-surface: #232637  (input surfaces, hover states)
+ *   --color-border:     #2E3147  (borders, dividers)
+ *   --color-text-primary:   #F1F5FD
+ *   --color-text-secondary: #8B90A7
+ *   --color-text-muted:     #5C6282
+ *   --color-accent-blue:    #4F8EF7
+ *   --color-accent-green:   #36D963
+ *   --color-accent-red:     #F75252
+ *   --color-accent-amber:   #F7B84B
+ *   --color-accent-purple:  #9B6EF7
+ */
+
+:root {
+  --color-bg-base: #0f1117;
+  --color-bg-card: #1a1d27;
+  --color-bg-surface: #232637;
+  --color-border: #2e3147;
+  --color-text-primary: #f1f5fd;
+  --color-text-secondary: #8b90a7;
+  --color-text-muted: #5c6282;
+  --color-accent-blue: #4f8ef7;
+  --color-accent-green: #36d963;
+  --color-accent-red: #f75252;
+  --color-accent-amber: #f7b84b;
+  --color-accent-purple: #9b6ef7;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Global cursor rules for interactive elements */
+button,
+[role="button"],
+select,
+a,
+summary,
+label[for],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+/* SweetAlert2 dark theme overrides */
+.swal-phantom {
+  border: 1px solid var(--color-border) !important;
+  border-radius: 12px !important;
+}
+
+.swal2-toast.swal-phantom {
+  border-radius: 10px !important;
+  font-size: 14px;
+}

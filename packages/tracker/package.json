@@ -1,0 +1,21 @@
+{
+  "name": "@phantom/tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phantom Analytics tracker script — < 5KB gzipped",
+  "main": "./dist/tracker.min.js",
+  "module": "./dist/tracker.esm.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup --entry.tracker=src/index.ts --format iife,esm --minify --no-dts --out-dir dist --target es2017 && cp dist/tracker.global.js dist/tracker.min.js && node -e \"const fs=require('fs'),zlib=require('zlib');const buf=fs.readFileSync('dist/tracker.min.js');zlib.gzip(buf,(e,r)=>{if(e)throw e;console.log('tracker.min.js gzipped size: '+r.length+' bytes');if(r.length>5120){console.error('ERROR: Exceeds 5KB gzip limit! ('+r.length+' bytes)');process.exit(1)}else{console.log('OK: Under 5KB limit')}})\"",
+    "dev": "tsup --entry.tracker=src/index.ts --format iife,esm --no-dts --out-dir dist --global-name phantom --target es2017 --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

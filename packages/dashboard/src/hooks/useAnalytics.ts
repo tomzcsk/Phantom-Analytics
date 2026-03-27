@@ -1,0 +1,194 @@
+import { useQuery } from '@tanstack/react-query'
+import type {
+  DateRange,
+  OverviewResponse,
+  TimeseriesPoint,
+  PageStat,
+  SourcesAnalyticsResponse,
+  DeviceAnalyticsResponse,
+  GeoStat,
+  FunnelResult,
+  ScrollDepthStat,
+  ClickStat,
+} from '@phantom/shared'
+import { apiGet } from '../lib/api'
+import { useTimezone } from '../context/TimezoneContext'
+
+function rangeParams(siteId: string, range: DateRange, tz: string): string {
+  return `site_id=${encodeURIComponent(siteId)}&from=${range.from}&to=${range.to}&tz=${encodeURIComponent(tz)}`
+}
+
+export function useOverview(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['overview', siteId, range, timezone.value],
+    queryFn: () => apiGet<OverviewResponse>(`/analytics/overview?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useTimeseries(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['timeseries', siteId, range, timezone.value],
+    queryFn: () => apiGet<TimeseriesPoint[]>(`/analytics/timeseries?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function usePages(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['pages', siteId, range, timezone.value],
+    queryFn: () => apiGet<PageStat[]>(`/analytics/pages?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useSources(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['sources', siteId, range, timezone.value],
+    queryFn: () =>
+      apiGet<SourcesAnalyticsResponse>(`/analytics/sources?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useDevices(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['devices', siteId, range, timezone.value],
+    queryFn: () =>
+      apiGet<DeviceAnalyticsResponse>(`/analytics/devices?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useGeo(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['geo', siteId, range, timezone.value],
+    queryFn: () => apiGet<GeoStat[]>(`/analytics/geo?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useFunnel(funnelId: string, siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['funnel', funnelId, siteId, range, timezone.value],
+    queryFn: () =>
+      apiGet<FunnelResult>(
+        `/analytics/funnel/${encodeURIComponent(funnelId)}?${rangeParams(siteId, range, timezone.value)}`,
+      ),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    enabled: Boolean(funnelId) && Boolean(siteId),
+  })
+}
+
+export interface SessionRecord {
+  id: string
+  session_id: string
+  entry_page: string | null
+  exit_page: string | null
+  page_count: number
+  duration_seconds: number
+  is_bounce: boolean
+  started_at: string
+  ended_at: string | null
+}
+
+export interface SessionEvent {
+  event_type: string
+  url: string
+  timestamp: string
+}
+
+export interface FunnelDef {
+  id: string
+  name: string
+  steps: import('@phantom/shared').FunnelStep[]
+  created_at: string
+}
+
+export function useSessions(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['sessions', siteId, range, timezone.value],
+    queryFn: () =>
+      apiGet<SessionRecord[]>(`/sessions?${rangeParams(siteId, range, timezone.value)}&limit=100`),
+    staleTime: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useSessionEvents(sessionId: string) {
+  return useQuery({
+    queryKey: ['session-events', sessionId],
+    queryFn: () => apiGet<SessionEvent[]>(`/sessions/${encodeURIComponent(sessionId)}/events`),
+    staleTime: 300_000,
+    enabled: Boolean(sessionId),
+  })
+}
+
+export function useScrollDepth(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['scroll-depth', siteId, range, timezone.value],
+    queryFn: () => apiGet<ScrollDepthStat[]>(`/analytics/scroll-depth?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useClicks(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['clicks', siteId, range, timezone.value],
+    queryFn: () => apiGet<ClickStat[]>(`/analytics/clicks?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export interface ClickVariable {
+  id: string
+  site_id: string
+  key: string
+  name: string
+  created_at: string
+}
+
+export function useClickVariables(siteId: string) {
+  return useQuery({
+    queryKey: ['click-variables', siteId],
+    queryFn: () => apiGet<ClickVariable[]>(`/click-variables?site_id=${encodeURIComponent(siteId)}`),
+    staleTime: 30_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useFunnels(siteId: string) {
+  return useQuery({
+    queryKey: ['funnels', siteId],
+    queryFn: () => apiGet<FunnelDef[]>(`/funnels?site_id=${encodeURIComponent(siteId)}`),
+    staleTime: 60_000,
+    enabled: Boolean(siteId),
+  })
+}

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true
+  },
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/tracker" },
+    { "path": "./packages/api" },
+    { "path": "./packages/dashboard" }
+  ],
+  "exclude": ["node_modules", "**/dist/**", "**/node_modules/**"]
+}

@@ -1,0 +1,131 @@
+# ── Phantom Analytics — Base Docker Compose ────────────────────────────────
+# ใช้ร่วมกันทั้ง dev และ prod
+# Dev:  docker compose up (auto-load override)
+# Prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+networks:
+  phantom-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+services:
+
+  # ── PostgreSQL 16 + TimescaleDB ─────────────────────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: phantom-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-phantom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-phantom}
+      POSTGRES_DB: ${POSTGRES_DB:-phantom_analytics}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - phantom-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phantom -d phantom_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Redis 7 ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: phantom-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - phantom-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # ── API (Fastify) ────────────────────────────────────────────────────────
+  api:
+    image: node:20-alpine
+    container_name: phantom-api
+    working_dir: /app
+    command: sh -c "apk add --no-cache openssl && yarn install --frozen-lockfile --production=false && yarn workspace @phantom/api run db:generate && yarn workspace @phantom/api build && node packages/api/dist/server.js"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-phantom}:${POSTGRES_PASSWORD:-phantom}@postgres:5432/${POSTGRES_DB:-phantom_analytics}
+      REDIS_URL: redis://redis:6379
+      API_PORT: "3001"
+      JWT_SECRET: ${JWT_SECRET:-please-set-a-real-secret-in-env-file}
+      DASHBOARD_USER: ${DASHBOARD_USER:-admin}
+      DASHBOARD_PASS: ${DASHBOARD_PASS:-changeme}
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/packages/api/node_modules
+      - /app/packages/shared/node_modules
+    networks:
+      - phantom-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── Dashboard (React) ──────────────────────────────────────────────────
+  dashboard:
+    image: node:20-alpine
+    container_name: phantom-dashboard
+    working_dir: /app
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: /api
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/packages/dashboard/node_modules
+      - /app/packages/shared/node_modules
+    networks:
+      - phantom-net
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5173 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── Nginx (reverse proxy) ──────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: phantom-nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - phantom-net
+    depends_on:
+      - api
+      - dashboard
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

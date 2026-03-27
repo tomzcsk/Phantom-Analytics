@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.*.local
+
+# TypeScript build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker/data/
+
+# MaxMind GeoIP database (downloaded at runtime)
+*.mmdb
+
+# Lock files (project uses pnpm)
+package-lock.json
+yarn.lock
+
+# Prisma
+packages/api/src/db/prisma/migrations/dev.db
+packages/api/src/db/prisma/dev.db

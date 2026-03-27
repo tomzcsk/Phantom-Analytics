@@ -1,0 +1,30 @@
+# ── Dev Override (auto-loaded by `docker compose up`) ──────────────────────
+# เปิด ports สำหรับ debug, ใช้ bind mount, verbose logging
+
+services:
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    restart: "no"
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+
+  dashboard:
+    restart: "no"
+    command: sh -c "yarn install --frozen-lockfile --production=false && yarn workspace @phantom/dashboard build && yarn workspace @phantom/dashboard preview --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"

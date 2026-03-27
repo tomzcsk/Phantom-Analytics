@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Phantom Analytics — Pre-commit Hook
+# Runs lint-staged: ESLint + Prettier on staged files
+
+npx lint-staged

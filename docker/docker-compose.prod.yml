@@ -1,0 +1,40 @@
+# ── Production Override ─────────────────────────────────────────────────────
+# ใช้: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# ความแตกต่างจาก dev:
+#   - DB/Redis ไม่เปิด port ออกภายนอก (internal only)
+#   - API ไม่เปิด port ออก (เข้าผ่าน nginx เท่านั้น)
+#   - Dashboard ไม่เปิด port ออก
+#   - ทุก service restart unless-stopped
+#   - NODE_ENV=production
+
+services:
+
+  postgres:
+    restart: unless-stopped
+    # ไม่มี ports — เข้าได้แค่จาก Docker network
+    # ถ้าต้องเข้า DB: docker exec -it phantom-postgres psql -U phantom -d phantom_analytics
+    # หรือใช้ SSH tunnel: ssh -L 5432:localhost:5432 user@vps
+
+  redis:
+    restart: unless-stopped
+    # ไม่มี ports — internal only
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-}
+
+  api:
+    restart: unless-stopped
+    # ไม่เปิด port — เข้าผ่าน nginx เท่านั้น
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+
+  dashboard:
+    restart: unless-stopped
+    command: sh -c "yarn install --frozen-lockfile --production=false && yarn workspace @phantom/dashboard build && yarn workspace @phantom/dashboard preview --host 0.0.0.0 --port 5173"
+    # ไม่เปิด port — เข้าผ่าน nginx เท่านั้น
+
+  nginx:
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
