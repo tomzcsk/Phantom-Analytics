@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash  TEXT        NOT NULL,
     display_name   TEXT        NOT NULL,
     role           TEXT        NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'developer', 'viewer')),
+    totp_secret    TEXT,
+    totp_enabled   BOOLEAN     NOT NULL DEFAULT false,
+    backup_codes   JSONB,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_login_at  TIMESTAMPTZ

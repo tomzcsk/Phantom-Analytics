@@ -131,6 +131,9 @@ model User {
   password_hash String
   display_name  String
   role          String    @default("viewer")
+  totp_secret   String?
+  totp_enabled  Boolean   @default(false)
+  backup_codes  Json?     @db.JsonB
   access_token  String?   @unique
   created_at    DateTime  @default(now()) @db.Timestamptz()
   updated_at    DateTime  @default(now()) @updatedAt @db.Timestamptz()

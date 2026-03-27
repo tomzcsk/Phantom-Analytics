@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Edit3, Save, ChevronDown, Plus, Trash2, Link2 } from 'lucide-react'
+import { Settings as SettingsIcon, Edit3, Save, ChevronDown, Plus, Trash2, Link2, Shield } from 'lucide-react'
 import { useSite } from '../context/SiteContext'
 import { apiPut, apiPost, apiGet, apiDelete } from '../lib/api'
 import { CopyButton } from '../components/CopyButton'
@@ -176,6 +176,190 @@ function ShareLinksCard({ siteId }: { siteId: string }) {
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
+    </div>
+  )
+}
+
+function TwoFactorCard() {
+  const [step, setStep] = useState<'idle' | 'setup' | 'confirm'>('idle')
+  const [otpauthUri, setOtpauthUri] = useState('')
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  const [code, setCode] = useState('')
+  const [disablePassword, setDisablePassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showDisable, setShowDisable] = useState(false)
+  const [is2faEnabled, setIs2faEnabled] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    void apiGet<{ totp_enabled: boolean }>('/auth/me').then((user) => {
+      setIs2faEnabled((user as unknown as { totp_enabled?: boolean }).totp_enabled ?? false)
+      setChecking(false)
+    }).catch(() => setChecking(false))
+  }, [])
+
+  async function handleSetup() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await apiPost<{ secret: string; otpauth_uri: string; backup_codes: string[] }>('/auth/2fa/setup', {})
+      setOtpauthUri(res.otpauth_uri)
+      setBackupCodes(res.backup_codes)
+      setStep('setup')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleConfirm() {
+    setLoading(true)
+    setError(null)
+    try {
+      await apiPost('/auth/2fa/confirm', { code })
+      setIs2faEnabled(true)
+      setStep('idle')
+      setCode('')
+      void toastSuccess('เปิดใช้งาน 2FA สำเร็จ')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'รหัสไม่ถูกต้อง')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDisable() {
+    setLoading(true)
+    setError(null)
+    try {
+      await apiDelete('/auth/2fa', { password: disablePassword })
+      setIs2faEnabled(false)
+      setShowDisable(false)
+      setDisablePassword('')
+      void toastSuccess('ปิด 2FA สำเร็จ')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'รหัสผ่านไม่ถูกต้อง')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (checking) return null
+
+  return (
+    <div
+      className="rounded-xl p-5"
+      style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Shield size={14} style={{ color: is2faEnabled ? 'var(--color-accent-green)' : 'var(--color-text-muted)' }} />
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          การยืนยันตัวตน 2 ขั้นตอน (2FA)
+        </h2>
+      </div>
+
+      {is2faEnabled ? (
+        <div>
+          <p className="text-xs mb-3" style={{ color: 'var(--color-accent-green)' }}>
+            เปิดใช้งานอยู่ — บัญชีของคุณได้รับการปกป้องด้วย authenticator app
+          </p>
+          {showDisable ? (
+            <div className="flex flex-col gap-2">
+              <input
+                type="password"
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                placeholder="ยืนยันรหัสผ่านเพื่อปิด 2FA"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+              />
+              {error && <p className="text-xs" style={{ color: 'var(--color-accent-red)' }}>{error}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => void handleDisable()} disabled={loading || !disablePassword} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'var(--color-accent-red)', color: '#fff', opacity: loading || !disablePassword ? 0.6 : 1 }}>
+                  {loading ? 'กำลังปิด…' : 'ยืนยันปิด 2FA'}
+                </button>
+                <button onClick={() => { setShowDisable(false); setError(null) }} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+                  ยกเลิก
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowDisable(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ color: 'var(--color-accent-red)', border: '1px solid var(--color-border)' }}>
+              ปิด 2FA
+            </button>
+          )}
+        </div>
+      ) : step === 'idle' ? (
+        <div>
+          <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
+            เพิ่มความปลอดภัยด้วย authenticator app เช่น Google Authenticator หรือ Authy
+          </p>
+          <button onClick={() => void handleSetup()} disabled={loading} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'var(--color-accent-blue)', color: '#fff', opacity: loading ? 0.6 : 1 }}>
+            {loading ? 'กำลังสร้าง…' : 'เปิดใช้งาน 2FA'}
+          </button>
+          {error && <p className="text-xs mt-2" style={{ color: 'var(--color-accent-red)' }}>{error}</p>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              1. สแกน QR Code ด้วย authenticator app
+            </p>
+            <div className="rounded-lg p-4 text-center" style={{ background: 'var(--color-bg-surface)' }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUri)}`}
+                alt="QR Code"
+                className="mx-auto"
+                style={{ width: 160, height: 160 }}
+              />
+              <p className="text-xs mt-2 font-mono break-all" style={{ color: 'var(--color-text-muted)' }}>
+                {otpauthUri.split('secret=')[1]?.split('&')[0] ?? ''}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              2. Backup Codes (เก็บไว้ที่ปลอดภัย)
+            </p>
+            <div className="grid grid-cols-2 gap-1">
+              {backupCodes.map((c) => (
+                <span key={c} className="text-xs font-mono px-2 py-1 rounded text-center" style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)' }}>
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              3. กรอกรหัส 6 หลักจาก app เพื่อยืนยัน
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                inputMode="numeric"
+                maxLength={6}
+                className="flex-1 px-3 py-2 rounded-lg text-sm outline-none font-mono tracking-[0.3em] text-center"
+                style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+              />
+              <button onClick={() => void handleConfirm()} disabled={loading || code.length !== 6} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--color-accent-blue)', color: '#fff', opacity: loading || code.length !== 6 ? 0.6 : 1 }}>
+                {loading ? 'ตรวจสอบ…' : 'ยืนยัน'}
+              </button>
+            </div>
+            {error && <p className="text-xs mt-2" style={{ color: 'var(--color-accent-red)' }}>{error}</p>}
+          </div>
+
+          <button onClick={() => { setStep('idle'); setError(null) }} className="text-xs self-start" style={{ color: 'var(--color-text-muted)' }}>
+            ← ยกเลิก
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -520,8 +704,11 @@ phantom.track('register_success')
           <ShareLinksCard siteId={activeSite.id} />
         </div>
 
-        {/* Right column — Installation + Usage examples */}
+        {/* Right column — 2FA + Installation + Usage examples */}
         <div className="flex flex-col gap-4">
+          {/* Two-Factor Authentication */}
+          <TwoFactorCard />
+
           {/* Installation */}
           <div
             className="rounded-xl p-5"
