@@ -23,6 +23,7 @@ import { usersRoute } from './routes/users.js'
 import { activityLogRoute } from './routes/activityLog.js'
 
 import { startSessionAggregator } from './services/sessionAggregator.js'
+import { startDataRetentionLoop } from './services/dataRetention.js'
 
 /**
  * Phantom Analytics — Fastify API Server
@@ -159,6 +160,7 @@ async function bootstrap(): Promise<void> {
   await redis.connect()
   startFlushLoop()
   startSessionAggregator()
+  startDataRetentionLoop()
 
   server.log.info('Bootstrap complete — flush loop started')
 }

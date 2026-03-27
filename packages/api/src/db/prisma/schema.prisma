@@ -19,8 +19,9 @@ model Site {
   name           String
   domain         String    @unique
   tracking_token String    @unique @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))
-  created_at     DateTime  @default(now()) @db.Timestamptz
-  deleted_at     DateTime? @db.Timestamptz
+  data_retention_days Int?
+  created_at          DateTime  @default(now()) @db.Timestamptz
+  deleted_at          DateTime? @db.Timestamptz
 
   events          Event[]
   sessions        Session[]

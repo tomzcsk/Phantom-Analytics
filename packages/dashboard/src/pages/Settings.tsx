@@ -1,11 +1,23 @@
 import { useState } from 'react'
-import { Settings as SettingsIcon, Edit3, Save } from 'lucide-react'
+import { Settings as SettingsIcon, Edit3, Save, ChevronDown } from 'lucide-react'
 import { useSite } from '../context/SiteContext'
 import { apiPut } from '../lib/api'
 import { CopyButton } from '../components/CopyButton'
 import { useAuth } from '../context/AuthContext'
 import { FormModal } from '../components/FormModal'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { toastSuccess, toastError } from '../lib/toast'
+
+const RETENTION_OPTIONS = [
+  { value: null, label: 'ไม่จำกัด (เก็บตลอด)' },
+  { value: 7, label: '7 วัน' },
+  { value: 14, label: '14 วัน' },
+  { value: 30, label: '30 วัน' },
+  { value: 60, label: '60 วัน' },
+  { value: 90, label: '90 วัน' },
+  { value: 180, label: '180 วัน' },
+  { value: 365, label: '365 วัน' },
+] as const
 
 function CodeBlock({ code, label }: { code: string; label: string }) {
   return (
@@ -52,6 +64,8 @@ export function Settings() {
   const [name, setName] = useState('')
   const [domain, setDomain] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingRetention, setSavingRetention] = useState(false)
+  const [pendingRetention, setPendingRetention] = useState<number | null | false>(false)
 
   if (!activeSite) return null
 
@@ -132,6 +146,26 @@ phantom.track('register_success')
       void toastError('บันทึกไม่สำเร็จ')
     } finally {
       setSaving(false)
+    }
+  }
+
+  function handleRetentionSelect(value: string) {
+    const days = value === '' ? null : parseInt(value, 10)
+    setPendingRetention(days)
+  }
+
+  async function handleRetentionConfirm() {
+    if (pendingRetention === false) return
+    setSavingRetention(true)
+    try {
+      await apiPut(`/sites/${activeSite!.id}`, { data_retention_days: pendingRetention })
+      refetch()
+      void toastSuccess('บันทึกนโยบายเก็บข้อมูลสำเร็จ')
+    } catch {
+      void toastError('บันทึกไม่สำเร็จ')
+    } finally {
+      setSavingRetention(false)
+      setPendingRetention(false)
     }
   }
 
@@ -256,6 +290,70 @@ phantom.track('register_success')
               ))}
             </div>
           </div>
+
+          {/* Data Retention */}
+          <div
+            className="rounded-xl p-5"
+            style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+          >
+            <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+              นโยบายเก็บข้อมูล
+            </h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
+              กำหนดจำนวนวันที่เก็บข้อมูล events, sessions และ funnel events — ข้อมูลที่เก่ากว่าจะถูกลบอัตโนมัติ
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <select
+                  value={activeSite.data_retention_days ?? ''}
+                  onChange={(e) => handleRetentionSelect(e.target.value)}
+                  disabled={!isDeveloper || savingRetention}
+                  className="w-full px-3 py-2 pr-8 rounded-lg text-sm appearance-none outline-none"
+                  style={{
+                    background: 'var(--color-bg-surface)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                    cursor: isDeveloper ? 'pointer' : 'not-allowed',
+                    opacity: savingRetention ? 0.6 : 1,
+                  }}
+                >
+                  {RETENTION_OPTIONS.map((opt) => (
+                    <option key={opt.value ?? 'null'} value={opt.value ?? ''}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: 'var(--color-text-muted)' }}
+                />
+              </div>
+              {savingRetention && (
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>กำลังบันทึก…</span>
+              )}
+            </div>
+            {activeSite.data_retention_days && (
+              <p className="text-xs mt-3" style={{ color: 'var(--color-accent-amber)' }}>
+                ข้อมูลที่เก่ากว่า {activeSite.data_retention_days} วัน จะถูกลบอัตโนมัติทุกชั่วโมง
+              </p>
+            )}
+          </div>
+
+          <ConfirmDialog
+            open={pendingRetention !== false}
+            title="เปลี่ยนนโยบายเก็บข้อมูล"
+            message={
+              pendingRetention === null
+                ? 'ยืนยันเปลี่ยนเป็น "ไม่จำกัด" — ข้อมูลจะถูกเก็บตลอดไป'
+                : `ยืนยันตั้งค่าเก็บข้อมูล ${pendingRetention} วัน — ข้อมูลที่เก่ากว่าจะถูกลบถาวรภายใน 1 ชั่วโมง`
+            }
+            confirmLabel="ยืนยัน"
+            danger={pendingRetention !== null}
+            loading={savingRetention}
+            onConfirm={() => void handleRetentionConfirm()}
+            onCancel={() => setPendingRetention(false)}
+          />
         </div>
 
         {/* Right column — Installation + Usage examples */}

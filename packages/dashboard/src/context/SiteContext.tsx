@@ -6,6 +6,7 @@ export interface Site {
   name: string
   domain: string
   tracking_token: string
+  data_retention_days: number | null
   created_at: string
 }
 

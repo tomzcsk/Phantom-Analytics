@@ -54,6 +54,7 @@ export const sitesRoute: FastifyPluginAsync = async (fastify) => {
         name: true,
         domain: true,
         tracking_token: true,
+        data_retention_days: true,
         created_at: true,
       },
     })
@@ -77,6 +78,7 @@ export const sitesRoute: FastifyPluginAsync = async (fastify) => {
         name: true,
         domain: true,
         tracking_token: true,
+        data_retention_days: true,
         created_at: true,
       },
       orderBy: { created_at: 'asc' },
@@ -95,6 +97,7 @@ export const sitesRoute: FastifyPluginAsync = async (fastify) => {
         name: true,
         domain: true,
         tracking_token: true,
+        data_retention_days: true,
         created_at: true,
       },
     })
@@ -108,6 +111,7 @@ export const sitesRoute: FastifyPluginAsync = async (fastify) => {
   const updateBodySchema = z.object({
     name: z.string().min(1).max(100).optional(),
     domain: z.string().min(1).max(253).optional(),
+    data_retention_days: z.number().int().min(7).nullable().optional(),
   })
 
   app.put('/sites/:id', { schema: { params: idParamsSchema, body: updateBodySchema }, preHandler: [requireRole('admin', 'developer')] }, async (request, reply) => {
@@ -121,6 +125,7 @@ export const sitesRoute: FastifyPluginAsync = async (fastify) => {
       data: {
         ...(request.body.name !== undefined && { name: request.body.name }),
         ...(request.body.domain !== undefined && { domain: request.body.domain }),
+        ...(request.body.data_retention_days !== undefined && { data_retention_days: request.body.data_retention_days }),
       },
     })
 

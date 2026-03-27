@@ -51,9 +51,13 @@ CREATE TABLE IF NOT EXISTS sites (
     name           TEXT        NOT NULL,
     domain         TEXT        NOT NULL UNIQUE,
     tracking_token TEXT        NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+    data_retention_days INT,              -- NULL = keep forever, min 7
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at     TIMESTAMPTZ          -- soft delete — data retained
 );
+
+-- Migration: add column if upgrading from older schema
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS data_retention_days INT;
 
 CREATE INDEX IF NOT EXISTS idx_sites_token ON sites (tracking_token)
     WHERE deleted_at IS NULL;
