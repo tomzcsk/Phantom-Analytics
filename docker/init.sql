@@ -25,10 +25,14 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash  TEXT        NOT NULL,
     display_name   TEXT        NOT NULL,
     role           TEXT        NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'developer', 'viewer')),
-    totp_secret    TEXT,
-    totp_enabled   BOOLEAN     NOT NULL DEFAULT false,
-    backup_codes   JSONB,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    totp_secret             TEXT,
+    totp_enabled            BOOLEAN     NOT NULL DEFAULT false,
+    backup_codes            JSONB,
+    failed_login_attempts   INT         NOT NULL DEFAULT 0,
+    locked_until            TIMESTAMPTZ,
+    password_reset_token    TEXT        UNIQUE,
+    password_reset_expires  TIMESTAMPTZ,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_login_at  TIMESTAMPTZ
 );

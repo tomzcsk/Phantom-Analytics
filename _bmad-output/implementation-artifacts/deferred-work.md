@@ -16,5 +16,5 @@
 
 ## Deferred from: Sprint 5 split (2026-03-27)
 
-- **Password Reset Flow** — reset password ผ่าน token (email/link-based)
-- **Account Lockout** — ล็อคบัญชีหลัง login ผิด 5 ครั้ง
+- ~~**Password Reset Flow**~~ — done (Sprint 5b)
+- ~~**Account Lockout**~~ — done (Sprint 5b)

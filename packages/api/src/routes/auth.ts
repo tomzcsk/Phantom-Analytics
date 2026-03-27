@@ -13,9 +13,14 @@ declare module '@fastify/jwt' {
   }
 }
 
+import { randomBytes } from 'node:crypto'
+
 const JWT_EXPIRY = '24h'
 const TOTP_TEMP_EXPIRY = '5m'
 const BACKUP_CODE_COUNT = 8
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_MINUTES = 15
+const RESET_TOKEN_EXPIRY_HOURS = 1
 
 function generateBackupCodes(): string[] {
   const codes: string[] = []
@@ -123,10 +128,48 @@ export const authRoute: FastifyPluginAsync = async (fastify) => {
       return reply.code(401).send({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' })
     }
 
+    // Account lockout check
+    if (user.locked_until && user.locked_until > new Date()) {
+      const remainMs = user.locked_until.getTime() - Date.now()
+      const remainMin = Math.ceil(remainMs / 60_000)
+      return reply.code(423).send({
+        error: `บัญชีถูกล็อคชั่วคราว กรุณาลองใหม่ใน ${remainMin} นาที`,
+        locked_until: user.locked_until.toISOString(),
+        remaining_minutes: remainMin,
+      })
+    }
+
     const valid = await verifyPassword(password, user.password_hash)
     if (!valid) {
-      logActivity({ userId: user.id, userName: user.display_name, action: 'login_failed', entityType: 'auth', description: `เข้าสู่ระบบไม่สำเร็จ (${username})` })
-      return reply.code(401).send({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' })
+      const attempts = user.failed_login_attempts + 1
+      const lockData: { failed_login_attempts: number; locked_until?: Date } = { failed_login_attempts: attempts }
+
+      if (attempts >= MAX_FAILED_ATTEMPTS) {
+        const lockUntil = new Date()
+        lockUntil.setMinutes(lockUntil.getMinutes() + LOCKOUT_MINUTES)
+        lockData.locked_until = lockUntil
+      }
+
+      await prisma.user.update({ where: { id: user.id }, data: lockData })
+      logActivity({ userId: user.id, userName: user.display_name, action: 'login_failed', entityType: 'auth', description: `เข้าสู่ระบบไม่สำเร็จ (ครั้งที่ ${attempts})` })
+
+      if (attempts >= MAX_FAILED_ATTEMPTS) {
+        return reply.code(423).send({
+          error: `เข้าสู่ระบบไม่สำเร็จ ${MAX_FAILED_ATTEMPTS} ครั้ง — บัญชีถูกล็อค ${LOCKOUT_MINUTES} นาที`,
+          locked_until: lockData.locked_until!.toISOString(),
+          remaining_minutes: LOCKOUT_MINUTES,
+        })
+      }
+
+      return reply.code(401).send({
+        error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+        remaining_attempts: MAX_FAILED_ATTEMPTS - attempts,
+      })
+    }
+
+    // Reset failed attempts on successful login
+    if (user.failed_login_attempts > 0 || user.locked_until) {
+      await prisma.user.update({ where: { id: user.id }, data: { failed_login_attempts: 0, locked_until: null } })
     }
 
     // 2FA check: if enabled, return temporary token instead of full JWT
@@ -292,6 +335,59 @@ export const authRoute: FastifyPluginAsync = async (fastify) => {
       data: { totp_enabled: false, totp_secret: null, backup_codes: { set: null } as never },
     })
     logActivity({ userId: user.id, userName: user.display_name, action: 'update', entityType: 'auth', description: 'ปิดใช้งาน 2FA' })
+
+    return reply.send({ ok: true })
+  })
+
+  // POST /api/auth/reset-password/request — admin generates reset link for a user
+  const resetRequestSchema = z.object({ user_id: z.string().uuid() })
+
+  app.post('/auth/reset-password/request', { schema: { body: resetRequestSchema }, preHandler: [requireAuth, requireRole('admin')] }, async (request, reply) => {
+    const user = await prisma.user.findUnique({ where: { id: request.body.user_id } })
+    if (!user) return reply.code(404).send({ error: 'ไม่พบผู้ใช้' })
+
+    const token = randomBytes(32).toString('hex')
+    const expires = new Date()
+    expires.setHours(expires.getHours() + RESET_TOKEN_EXPIRY_HOURS)
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password_reset_token: token, password_reset_expires: expires },
+    })
+
+    logActivity({ userId: request.user.sub, userName: request.user.username, action: 'create', entityType: 'auth', entityId: user.id, description: `สร้าง reset link สำหรับ "${user.display_name}"` })
+
+    return reply.send({ token, expires_at: expires.toISOString() })
+  })
+
+  // POST /api/auth/reset-password/confirm — public: set new password via token
+  const resetConfirmSchema = z.object({
+    token: z.string().min(1),
+    password: z.string().min(8),
+  })
+
+  app.post('/auth/reset-password/confirm', { schema: { body: resetConfirmSchema } }, async (request, reply) => {
+    const { token, password } = request.body
+
+    const user = await prisma.user.findUnique({ where: { password_reset_token: token } })
+    if (!user) return reply.code(404).send({ error: 'ลิงก์ไม่ถูกต้อง' })
+    if (!user.password_reset_expires || user.password_reset_expires < new Date()) {
+      return reply.code(410).send({ error: 'ลิงก์หมดอายุแล้ว กรุณาขอลิงก์ใหม่จากผู้ดูแลระบบ' })
+    }
+
+    const password_hash = await hashPassword(password)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password_hash,
+        password_reset_token: null,
+        password_reset_expires: null,
+        failed_login_attempts: 0,
+        locked_until: null,
+      },
+    })
+
+    logActivity({ userId: user.id, userName: user.display_name, action: 'update', entityType: 'auth', description: 'รีเซ็ตรหัสผ่านสำเร็จ' })
 
     return reply.send({ ok: true })
   })

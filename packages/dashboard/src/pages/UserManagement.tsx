@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, Trash2, Globe, Link, RefreshCw, ChevronDown } from 'lucide-react'
+import { Users, Plus, Trash2, Globe, Link, RefreshCw, ChevronDown, KeyRound } from 'lucide-react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api'
 import { toastSuccess, toastError } from '../lib/toast'
 import { useAuth } from '../context/AuthContext'
@@ -180,6 +180,7 @@ export function UserManagement() {
   const [deleting, setDeleting] = useState(false)
   const [siteAssignTarget, setSiteAssignTarget] = useState<UserRecord | null>(null)
   const [generatingToken, setGeneratingToken] = useState<string | null>(null)
+  const [resetLink, setResetLink] = useState<{ userId: string; url: string } | null>(null)
   const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; userName: string; oldRole: string; newRole: string } | null>(null)
   const [userSitesMap, setUserSitesMap] = useState<Record<string, string[]>>({})
 
@@ -248,6 +249,17 @@ export function UserManagement() {
       void toastError('สร้างลิงก์ไม่สำเร็จ')
     } finally {
       setGeneratingToken(null)
+    }
+  }
+
+  async function handleResetPassword(userId: string) {
+    try {
+      const res = await apiPost<{ token: string }>('/auth/reset-password/request', { user_id: userId })
+      const url = `${window.location.origin}/reset-password?token=${res.token}`
+      setResetLink({ userId, url })
+      void toastSuccess('สร้าง reset link สำเร็จ')
+    } catch {
+      void toastError('สร้าง reset link ไม่สำเร็จ')
     }
   }
 
@@ -369,6 +381,11 @@ export function UserManagement() {
                           </>
                         )}
                         {!isSelf && (
+                          <button onClick={() => void handleResetPassword(u.id)} className="p-1.5 rounded-lg" style={{ color: 'var(--color-accent-amber)' }} title="Reset Password">
+                            <KeyRound size={14} />
+                          </button>
+                        )}
+                        {!isSelf && (
                           <button onClick={() => setDeleteTarget(u)} className="p-1.5 rounded-lg" style={{ color: 'var(--color-accent-red)' }} title="ลบผู้ใช้">
                             <Trash2 size={14} />
                           </button>
@@ -406,6 +423,30 @@ export function UserManagement() {
         }}
         onCancel={() => setRoleChangeTarget(null)}
       />
+
+      <FormModal open={!!resetLink} title="Reset Password Link" onClose={() => setResetLink(null)}>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            ส่งลิงก์นี้ให้ผู้ใช้เพื่อตั้งรหัสผ่านใหม่ (หมดอายุใน 1 ชั่วโมง)
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={resetLink?.url ?? ''}
+              className="flex-1 px-3 py-2 rounded-lg text-xs font-mono outline-none"
+              style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+            />
+            <CopyButton text={resetLink?.url ?? ''} />
+          </div>
+          <button
+            onClick={() => setResetLink(null)}
+            className="self-end px-4 py-2 rounded-lg text-sm"
+            style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+          >
+            ปิด
+          </button>
+        </div>
+      </FormModal>
     </div>
   )
 }
