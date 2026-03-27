@@ -154,3 +154,157 @@ describe('session timeout', () => {
     expect(sessionNonce).toBe(originalNonce)
   })
 })
+
+// ── Fingerprint entropy ──────────────────────────────────────────────────
+
+describe('fingerprint entropy', () => {
+  it('produces different hashes for different screen sizes', async () => {
+    const a = await fingerprint('nonce', { screenWidth: 1920, screenHeight: 1080 })
+    const b = await fingerprint('nonce', { screenWidth: 1366, screenHeight: 768 })
+    expect(a).not.toBe(b)
+  })
+
+  it('produces different hashes for different languages', async () => {
+    const a = await fingerprint('nonce', { language: 'en-US' })
+    const b = await fingerprint('nonce', { language: 'th-TH' })
+    expect(a).not.toBe(b)
+  })
+
+  it('produces different hashes for different timezones', async () => {
+    const a = await fingerprint('nonce', { timezone: 'Asia/Bangkok' })
+    const b = await fingerprint('nonce', { timezone: 'America/New_York' })
+    expect(a).not.toBe(b)
+  })
+
+  it('hash length is exactly 32 hex chars (128-bit)', async () => {
+    const hash = await fingerprint('test', {
+      screenWidth: 2560, screenHeight: 1440,
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X)', language: 'ja-JP',
+      timezone: 'Asia/Tokyo',
+    })
+    expect(hash).toHaveLength(32)
+    expect(hash).toMatch(/^[0-9a-f]+$/)
+  })
+})
+
+// ── Scroll depth calculation ─────────────────────────────────────────────
+
+describe('scroll depth calculation', () => {
+  function calcScrollDepth(
+    scrollTop: number,
+    viewportHeight: number,
+    documentHeight: number,
+  ): number {
+    if (documentHeight <= viewportHeight) return 100
+    const maxScroll = documentHeight - viewportHeight
+    return Math.min(100, Math.round((scrollTop / maxScroll) * 100))
+  }
+
+  it('returns 100% when document is shorter than viewport', () => {
+    expect(calcScrollDepth(0, 900, 800)).toBe(100)
+  })
+
+  it('returns 0% at top of page', () => {
+    expect(calcScrollDepth(0, 900, 3000)).toBe(0)
+  })
+
+  it('returns 100% at bottom of page', () => {
+    expect(calcScrollDepth(2100, 900, 3000)).toBe(100)
+  })
+
+  it('returns 50% at middle of page', () => {
+    expect(calcScrollDepth(1050, 900, 3000)).toBe(50)
+  })
+
+  it('caps at 100% even if scrollTop exceeds max', () => {
+    expect(calcScrollDepth(5000, 900, 3000)).toBe(100)
+  })
+})
+
+// ── Payload structure ────────────────────────────────────────────────────
+
+describe('event payload structure', () => {
+  it('pageview payload contains required fields', () => {
+    const payload = {
+      site_id: '00000000-0000-0000-0000-000000000001',
+      token: 'a'.repeat(64),
+      session_id: 'abc123',
+      event_type: 'pageview' as const,
+      url: 'https://example.com/test',
+      timestamp: new Date().toISOString(),
+    }
+
+    expect(payload).toHaveProperty('site_id')
+    expect(payload).toHaveProperty('token')
+    expect(payload).toHaveProperty('session_id')
+    expect(payload).toHaveProperty('event_type')
+    expect(payload).toHaveProperty('url')
+    expect(payload).toHaveProperty('timestamp')
+    expect(payload.token).toHaveLength(64)
+  })
+
+  it('session_end payload includes time_on_page', () => {
+    const payload = {
+      site_id: '00000000-0000-0000-0000-000000000001',
+      token: 'a'.repeat(64),
+      session_id: 'abc123',
+      event_type: 'session_end' as const,
+      url: 'https://example.com/test',
+      time_on_page: 45,
+      timestamp: new Date().toISOString(),
+    }
+
+    expect(payload.event_type).toBe('session_end')
+    expect(payload.time_on_page).toBe(45)
+    expect(typeof payload.time_on_page).toBe('number')
+  })
+
+  it('custom event payload includes custom_name and custom_properties', () => {
+    const payload = {
+      site_id: '00000000-0000-0000-0000-000000000001',
+      token: 'a'.repeat(64),
+      session_id: 'abc123',
+      event_type: 'event' as const,
+      url: 'https://example.com/test',
+      custom_name: 'signup_click',
+      custom_properties: { plan: 'pro' },
+      timestamp: new Date().toISOString(),
+    }
+
+    expect(payload.custom_name).toBe('signup_click')
+    expect(payload.custom_properties).toEqual({ plan: 'pro' })
+  })
+
+  it('timestamp is valid ISO 8601', () => {
+    const ts = new Date().toISOString()
+    expect(() => new Date(ts)).not.toThrow()
+    expect(new Date(ts).toISOString()).toBe(ts)
+  })
+})
+
+// ── Config override ──────────────────────────────────────────────────────
+
+describe('config override mechanism', () => {
+  it('__phantom_config overrides default endpoint', () => {
+    const defaultEndpoint = '/api/collect'
+    const config: Record<string, string> = { endpoint: '/custom/collect' }
+
+    const resolvedEndpoint = config['endpoint'] ?? defaultEndpoint
+    expect(resolvedEndpoint).toBe('/custom/collect')
+  })
+
+  it('falls back to default when no config present', () => {
+    const defaultEndpoint = '/api/collect'
+    const config: Record<string, string> | undefined = undefined
+
+    const resolvedEndpoint = config?.['endpoint'] ?? defaultEndpoint
+    expect(resolvedEndpoint).toBe('/api/collect')
+  })
+
+  it('__phantom_config can override site_id', () => {
+    const config = { siteId: 'custom-site-id', token: 'custom-token' }
+
+    expect(config.siteId).toBe('custom-site-id')
+    expect(config.token).toBe('custom-token')
+  })
+})

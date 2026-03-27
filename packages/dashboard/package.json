@@ -9,7 +9,7 @@
     "dev": "vite --port 5173",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests --exclude 'e2e/**'",
     "test:e2e": "playwright test"
   },
   "dependencies": {

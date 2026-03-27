@@ -65,10 +65,18 @@ import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod
 import jwt from '@fastify/jwt'
 import { collectRoute } from '../routes/collect.js'
 import { prisma } from '../db/client.js'
+import { pushToBuffer } from '../services/buffer.js'
+import { publishRealtimeEvent } from '../services/realtime.js'
+import { lookupGeo } from '../services/geo.js'
+import { parseUA } from '../services/ua.js'
 
 const mockPrisma = prisma as unknown as {
   site: { findFirst: ReturnType<typeof vi.fn> }
 }
+const mockPushToBuffer = pushToBuffer as ReturnType<typeof vi.fn>
+const mockPublish = publishRealtimeEvent as ReturnType<typeof vi.fn>
+const mockLookupGeo = lookupGeo as ReturnType<typeof vi.fn>
+const mockParseUA = parseUA as ReturnType<typeof vi.fn>
 
 async function buildApp() {
   const app = Fastify({ logger: false })
@@ -175,5 +183,176 @@ describe('POST /api/collect', () => {
     })
 
     expect(res.statusCode).toBe(400)
+  })
+
+  // ── Enrichment pipeline ──────────────────────────────────────────────
+
+  it('calls lookupGeo with request IP', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+    })
+
+    expect(mockLookupGeo).toHaveBeenCalled()
+  })
+
+  it('calls parseUA with user-agent header', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+      headers: { 'user-agent': 'Mozilla/5.0 Chrome/120' },
+    })
+
+    expect(mockParseUA).toHaveBeenCalledWith('Mozilla/5.0 Chrome/120')
+  })
+
+  it('pushes enriched event to buffer on valid request', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+    })
+
+    expect(mockPushToBuffer).toHaveBeenCalledTimes(1)
+    const buffered = mockPushToBuffer.mock.calls[0][0]
+    expect(buffered).toHaveProperty('site_id', VALID_PAYLOAD.site_id)
+    expect(buffered).toHaveProperty('country_code', 'US')
+    expect(buffered).toHaveProperty('device_type', 'desktop')
+    expect(buffered).toHaveProperty('browser', 'Chrome')
+    expect(buffered).toHaveProperty('os', 'macOS')
+  })
+
+  it('publishes realtime event on valid request', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+    })
+
+    expect(mockPublish).toHaveBeenCalledTimes(1)
+    expect(mockPublish).toHaveBeenCalledWith(VALID_PAYLOAD.site_id, expect.any(Object))
+  })
+
+  it('does NOT push to buffer or publish for bot requests', async () => {
+    mockParseUA.mockReturnValueOnce({
+      is_bot: true, device_type: null, browser_name: null,
+      browser_version: null, os_name: null, os_version: null,
+    })
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+    })
+
+    expect(mockPushToBuffer).not.toHaveBeenCalled()
+    expect(mockPublish).not.toHaveBeenCalled()
+  })
+
+  it('still returns 202 if buffer push fails', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+    mockPushToBuffer.mockRejectedValueOnce(new Error('Redis down'))
+
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+    })
+
+    expect(res.statusCode).toBe(202)
+  })
+
+  // ── Event types ──────────────────────────────────────────────────────
+
+  it('accepts all valid event types', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const eventTypes = ['pageview', 'event', 'session_start', 'session_end', 'scroll', 'click', 'funnel_step']
+
+    const app = await buildApp()
+    for (const event_type of eventTypes) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/collect',
+        payload: { ...VALID_PAYLOAD, event_type },
+      })
+      expect(res.statusCode).toBe(202)
+    }
+  })
+
+  it('handles custom event with custom_name and custom_properties', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: {
+        ...VALID_PAYLOAD,
+        event_type: 'event',
+        custom_name: 'signup_click',
+        custom_properties: { plan: 'pro', source: 'homepage' },
+      },
+    })
+
+    expect(res.statusCode).toBe(202)
+    const buffered = mockPushToBuffer.mock.calls[0][0]
+    expect(buffered.custom_name).toBe('signup_click')
+    expect(buffered.custom_properties).toEqual({ plan: 'pro', source: 'homepage' })
+  })
+
+  it('handles session_end with time_on_page', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: {
+        ...VALID_PAYLOAD,
+        event_type: 'session_end',
+        time_on_page: 45,
+      },
+    })
+
+    expect(res.statusCode).toBe(202)
+    const buffered = mockPushToBuffer.mock.calls[0][0]
+    expect(buffered.time_on_page).toBe(45)
+  })
+
+  // ── GeoIP fallback ───────────────────────────────────────────────────
+
+  it('handles GeoIP returning nulls gracefully', async () => {
+    mockPrisma.site.findFirst.mockResolvedValue({ id: VALID_PAYLOAD.site_id })
+    mockLookupGeo.mockReturnValueOnce({ country_code: null, region: null })
+
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/collect',
+      payload: VALID_PAYLOAD,
+    })
+
+    expect(res.statusCode).toBe(202)
+    const buffered = mockPushToBuffer.mock.calls[0][0]
+    expect(buffered.country_code).toBeNull()
+    expect(buffered.region).toBeNull()
   })
 })
