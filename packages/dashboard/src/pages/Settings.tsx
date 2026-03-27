@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Settings as SettingsIcon, Edit3, Save, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Settings as SettingsIcon, Edit3, Save, ChevronDown, Plus, Trash2, Link2 } from 'lucide-react'
 import { useSite } from '../context/SiteContext'
-import { apiPut } from '../lib/api'
+import { apiPut, apiPost, apiGet, apiDelete } from '../lib/api'
 import { CopyButton } from '../components/CopyButton'
 import { useAuth } from '../context/AuthContext'
 import { FormModal } from '../components/FormModal'
@@ -18,6 +18,167 @@ const RETENTION_OPTIONS = [
   { value: 180, label: '180 วัน' },
   { value: 365, label: '365 วัน' },
 ] as const
+
+interface ShareLinkItem {
+  id: string
+  token: string
+  label: string
+  expires_at: string
+  created_at: string
+}
+
+function ShareLinksCard({ siteId }: { siteId: string }) {
+  const { isDeveloper } = useAuth()
+  const [links, setLinks] = useState<ShareLinkItem[]>([])
+  const [showForm, setShowForm] = useState(false)
+  const [label, setLabel] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ShareLinkItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (!siteId) return
+    void apiGet<ShareLinkItem[]>(`/share-links?site_id=${siteId}`).then(setLinks)
+  }, [siteId])
+
+  async function handleCreate() {
+    setSaving(true)
+    try {
+      const link = await apiPost<ShareLinkItem>('/share-links', { site_id: siteId, label, expires_days: 30 })
+      setLinks((prev) => [link, ...prev])
+      setShowForm(false)
+      setLabel('')
+      void toastSuccess('สร้าง share link สำเร็จ')
+    } catch {
+      void toastError('สร้าง share link ไม่สำเร็จ')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await apiDelete(`/share-links/${deleteTarget.id}?site_id=${siteId}`)
+      setLinks((prev) => prev.filter((l) => l.id !== deleteTarget.id))
+      void toastSuccess('ลบ share link สำเร็จ')
+    } catch {
+      void toastError('ลบไม่สำเร็จ')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
+
+  function buildUrl(token: string) {
+    return `${window.location.origin}/public/${token}`
+  }
+
+  if (!isDeveloper) return null
+
+  return (
+    <div
+      className="rounded-xl p-5"
+      style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Link2 size={14} style={{ color: 'var(--color-accent-blue)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            แชร์ Dashboard
+          </h2>
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+          style={{ background: 'var(--color-accent-blue)', color: '#fff' }}
+        >
+          <Plus size={12} /> สร้างลิงก์
+        </button>
+      </div>
+
+      <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
+        สร้างลิงก์สาธารณะเพื่อแชร์ข้อมูลภาพรวมโดยไม่ต้อง login (หมดอายุ 30 วัน)
+      </p>
+
+      <FormModal open={showForm} title="สร้าง Share Link" onClose={() => setShowForm(false)}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-muted)' }}>ชื่อลิงก์</p>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="เช่น สำหรับทีม Marketing"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => void handleCreate()}
+              disabled={saving || !label.trim()}
+              className="px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ background: 'var(--color-accent-blue)', color: '#fff', opacity: saving || !label.trim() ? 0.6 : 1 }}
+            >
+              {saving ? 'กำลังสร้าง…' : 'สร้าง'}
+            </button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm" style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+              ยกเลิก
+            </button>
+          </div>
+        </div>
+      </FormModal>
+
+      {links.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {links.map((link) => {
+            const expired = new Date(link.expires_at) < new Date()
+            return (
+              <div
+                key={link.id}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
+                style={{ background: 'var(--color-bg-surface)' }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate" style={{ color: expired ? 'var(--color-text-muted)' : 'var(--color-text-primary)' }}>
+                    {link.label}
+                    {expired && <span className="ml-2 text-xs" style={{ color: 'var(--color-accent-red)' }}>หมดอายุ</span>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {!expired && <CopyButton text={buildUrl(link.token)} />}
+                  <button
+                    onClick={() => setDeleteTarget(link)}
+                    className="p-1.5 rounded-lg"
+                    style={{ color: 'var(--color-accent-red)' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          ยังไม่มี share link — กดสร้างเพื่อแชร์ข้อมูลภาพรวม
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="ลบ Share Link"
+        message={`ยืนยันลบลิงก์ "${deleteTarget?.label ?? ''}" หรือไม่? คนที่มี link จะเข้าถึงไม่ได้อีก`}
+        confirmLabel="ลบ"
+        danger
+        loading={deleting}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  )
+}
 
 function CodeBlock({ code, label }: { code: string; label: string }) {
   return (
@@ -354,6 +515,9 @@ phantom.track('register_success')
             onConfirm={() => void handleRetentionConfirm()}
             onCancel={() => setPendingRetention(false)}
           />
+
+          {/* Share Links */}
+          <ShareLinksCard siteId={activeSite.id} />
         </div>
 
         {/* Right column — Installation + Usage examples */}

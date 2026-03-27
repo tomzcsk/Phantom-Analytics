@@ -21,6 +21,7 @@ import { funnelsRoute } from './routes/funnels.js'
 import { clickVariablesRoute } from './routes/clickVariables.js'
 import { usersRoute } from './routes/users.js'
 import { activityLogRoute } from './routes/activityLog.js'
+import { shareLinksRoute } from './routes/shareLinks.js'
 
 import { startSessionAggregator } from './services/sessionAggregator.js'
 import { startDataRetentionLoop } from './services/dataRetention.js'
@@ -153,6 +154,7 @@ async function bootstrap(): Promise<void> {
   await server.register(clickVariablesRoute, { prefix: '/api' })
   await server.register(usersRoute, { prefix: '/api' })
   await server.register(activityLogRoute, { prefix: '/api' })
+  await server.register(shareLinksRoute, { prefix: '/api' })
 
   // ── Background jobs ───────────────────────────────────────────────────────
 

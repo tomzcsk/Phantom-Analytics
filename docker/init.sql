@@ -62,6 +62,19 @@ ALTER TABLE sites ADD COLUMN IF NOT EXISTS data_retention_days INT;
 CREATE INDEX IF NOT EXISTS idx_sites_token ON sites (tracking_token)
     WHERE deleted_at IS NULL;
 
+-- ── Share Links ─────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS share_links (
+    id         UUID        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    site_id    UUID        NOT NULL REFERENCES sites(id),
+    token      TEXT        NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
+    label      TEXT        NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links (token);
+
 -- ── Events (TimescaleDB hypertable) ─────────────────────────────────────
 -- This is the core append-only event stream.
 -- Partitioned by time via TimescaleDB for fast range queries.

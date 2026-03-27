@@ -10,6 +10,7 @@ import type { SourceStat } from '@phantom/shared'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
 import { ExportButton } from '../components/ExportButton'
+import { WorldMap } from '../components/WorldMap'
 
 const SOURCE_COLORS: Record<SourceStat['source'], string> = {
   direct: '#4F8EF7',
@@ -464,7 +465,25 @@ export function Sources() {
 
       {/* Geography tab */}
       {tab === 'geo' && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="flex flex-col gap-5">
+          {/* World Map */}
+          {!geoLoading && (geoData ?? []).length > 0 && (
+            <div
+              className="rounded-xl p-5"
+              style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+            >
+              <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                แผนที่ผู้เข้าชม
+              </h2>
+              <WorldMap
+                data={geoData ?? []}
+                onCountryClick={(code, name) => setSelectedCountry(selectedCountry?.code === code ? null : { code, name })}
+                selectedCountry={selectedCountry?.code}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {/* Top countries */}
           <div
             className="rounded-xl p-5"
@@ -605,6 +624,7 @@ export function Sources() {
             )}
           </div>
           )}
+          </div>
         </div>
       )}
     </div>

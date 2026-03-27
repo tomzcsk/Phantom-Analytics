@@ -5,7 +5,7 @@ interface LogParams {
   userId: string
   userName: string
   action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'login_failed'
-  entityType: 'site' | 'user' | 'funnel' | 'click_variable' | 'auth'
+  entityType: 'site' | 'user' | 'funnel' | 'click_variable' | 'auth' | 'share_link'
   entityId?: string
   description: string
   metadata?: Record<string, unknown>

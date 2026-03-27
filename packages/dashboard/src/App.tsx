@@ -16,6 +16,7 @@ import { Login } from './pages/Login'
 import { UserManagement } from './pages/UserManagement'
 import { ActivityLog } from './pages/ActivityLog'
 import { SharedLogin } from './pages/SharedLogin'
+import { PublicDashboard } from './pages/PublicDashboard'
 
 function LoadingSpinner() {
   return (
@@ -126,6 +127,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/shared" element={<SharedLogin />} />
+      <Route path="/public/:token" element={<PublicDashboard />} />
       <Route
         path="/*"
         element={
