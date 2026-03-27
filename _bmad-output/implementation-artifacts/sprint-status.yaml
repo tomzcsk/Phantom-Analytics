@@ -1,0 +1,138 @@
+# generated: 2026-03-27
+# last_updated: 2026-03-27
+# project: phantom-analytics
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-27
+last_updated: 2026-03-27
+project: phantom-analytics
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  # Epic 1: Project Setup & Infrastructure
+  epic-1: done
+  1-1-monorepo-initialization-with-pnpm-workspaces: done
+  1-2-docker-compose-full-stack-environment: done
+  1-3-postgresql-timescaledb-schema-initialization: done
+  1-4-eslint-prettier-husky-pre-commit-setup: done
+  epic-1-retrospective: optional
+
+  # Epic 2: Tracker Script (tracker.js)
+  epic-2: done
+  2-1-core-tracker-bundle-setup: done
+  2-2-pageview-auto-capture: done
+  2-3-spa-history-api-patching: done
+  2-4-fingerprint-based-session-id: done
+  2-5-exit-unload-event-via-sendbeacon: done
+  2-6-custom-event-tracking-api: done
+  2-7-dnt-do-not-track-respect: done
+  epic-2-retrospective: optional
+
+  # Epic 3: Event Collection API
+  epic-3: done
+  3-1-fastify-api-scaffold-with-zod-validation: done
+  3-2-post-api-collect-endpoint: done
+  3-3-geoip-enrichment: done
+  3-4-user-agent-parsing-device-browser-os: done
+  3-5-bot-filtering: done
+  3-6-redis-backed-rate-limiting: done
+  3-7-redis-event-buffer-with-batch-writes: done
+  3-8-cors-configuration-per-site-domain: done
+  epic-3-retrospective: optional
+
+  # Epic 4: Analytics Query API
+  epic-4: done
+  4-1-get-api-analytics-overview: done
+  4-2-get-api-analytics-timeseries: done
+  4-3-get-api-analytics-pages: done
+  4-4-get-api-analytics-sources: done
+  4-5-get-api-analytics-devices: done
+  4-6-get-api-analytics-geo: done
+  4-7-get-api-realtime-stream-sse: done
+  4-8-get-api-analytics-funnel-id: done
+  epic-4-retrospective: optional
+
+  # Epic 5: Dashboard Frontend
+  epic-5: done
+  5-1-react-vite-tailwind-project-scaffold: done
+  5-2-kpi-strip-4-metric-cards: done
+  5-3-main-trend-line-chart: done
+  5-4-real-time-visitors-panel: done
+  5-5-top-pages-table: done
+  5-6-source-breakdown-donut-chart: done
+  5-7-funnel-visualization: done
+  5-8-device-browser-breakdown: done
+  5-9-onboarding-empty-state-snippet-copy: done
+  epic-5-retrospective: optional
+
+  # Epic 6: Multi-site Management
+  epic-6: done
+  6-1-sites-crud-api: done
+  6-2-site-switcher-in-dashboard: done
+  epic-6-retrospective: optional
+
+  # Epic 7: Sessions & User Journeys
+  epic-7: done
+  7-1-session-aggregation-pipeline: done
+  7-2-journey-view-in-dashboard: done
+  epic-7-retrospective: optional
+
+  # Epic 8: Funnel Management
+  epic-8: done
+  8-1-funnel-builder-api: done
+  8-2-funnel-builder-ui: done
+  epic-8-retrospective: optional
+
+  # Epic 9: Security & Authentication
+  epic-9: done
+  9-1-dashboard-basic-authentication: done
+  9-2-api-token-validation: done
+  epic-9-retrospective: optional
+
+  # Epic 10: Testing & Quality
+  epic-10: done
+  10-1-api-integration-tests-vitest: done
+  10-2-tracker-unit-tests: done
+  10-3-dashboard-e2e-tests-playwright: done
+  epic-10-retrospective: optional
+
+  # Epic 11: UI Overhaul & UX Improvements
+  epic-11: done
+  11-1-modal-popup-for-all-crud-actions: done
+  11-2-sweetalert2-toast-notifications: done
+  11-3-timezone-selector-with-data-sync: done
+  11-4-activity-log: done
+  epic-11-retrospective: optional
