@@ -3,6 +3,7 @@ import type {
   DateRange,
   OverviewResponse,
   TimeseriesPoint,
+  TimeseriesResponse,
   PageStat,
   SourcesAnalyticsResponse,
   DeviceAnalyticsResponse,
@@ -13,6 +14,7 @@ import type {
   TimezoneStat,
   RegionStat,
   UtmStat,
+  EntryExitPagesResponse,
 } from '@phantom/shared'
 import { apiGet } from '../lib/api'
 import { useTimezone } from '../context/TimezoneContext'
@@ -32,11 +34,31 @@ export function useOverview(siteId: string, range: DateRange) {
   })
 }
 
-export function useTimeseries(siteId: string, range: DateRange) {
+export function useTimeseries(siteId: string, range: DateRange, compare = false) {
   const { timezone } = useTimezone()
   return useQuery({
-    queryKey: ['timeseries', siteId, range, timezone.value],
-    queryFn: () => apiGet<TimeseriesPoint[]>(`/analytics/timeseries?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['timeseries', siteId, range, timezone.value, compare],
+    queryFn: () => {
+      const base = rangeParams(siteId, range, timezone.value)
+      if (compare) {
+        return apiGet<TimeseriesResponse>(`/analytics/timeseries?${base}&compare=true`)
+      }
+      // Backward compatible: plain array wrapped into response shape
+      return apiGet<TimeseriesPoint[]>(`/analytics/timeseries?${base}`).then(
+        (current) => ({ current }) as TimeseriesResponse,
+      )
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useEntryExitPages(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['entry-exit-pages', siteId, range, timezone.value],
+    queryFn: () => apiGet<EntryExitPagesResponse>(`/analytics/entry-exit-pages?${rangeParams(siteId, range, timezone.value)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),

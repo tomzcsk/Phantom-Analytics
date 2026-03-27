@@ -17,6 +17,9 @@ import type {
   TimezoneStat,
   RegionStat,
   UtmStat,
+  EntryExitStat,
+  EntryExitPagesResponse,
+  TimeseriesResponse,
 } from '@phantom/shared'
 import { prisma } from '../db/client.js'
 import { getRegionName } from '../services/regionNames.js'
@@ -205,14 +208,15 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
 
   // ── E4-F2: Timeseries ────────────────────────────────────────────────────
 
-  app.get('/analytics/timeseries', { schema: { querystring: siteRangeSchema } }, async (request, reply) => {
-    const { site_id, from, to, tz } = request.query
+  const timeseriesSchema = siteRangeSchema.extend({
+    compare: z.enum(['true', 'false']).default('false'),
+  })
+
+  async function fetchTimeseries(siteId: string, from: string, to: string, tz: string): Promise<TimeseriesPoint[]> {
     const days = daysDiff(from, to)
     const { fromTs, toTs } = tzBounds(from, to, tz)
     const safeTz = tz.replace(/'/g, "''")
     const tzLiteral = Prisma.raw(`'${safeTz}'`)
-
-    // Auto-select bucket: 1h for < 2d, 1d for < 90d, 1w otherwise
     const bucketInterval = days < 2 ? '1 hour' : days < 90 ? '1 day' : '1 week'
     const seriesStep = days < 2 ? '1 hour' : days < 90 ? '1 day' : '1 week'
     const intervalRaw = Prisma.raw(`'${bucketInterval}'`)
@@ -234,7 +238,7 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
           COUNT(DISTINCT session_id)
             FILTER (WHERE event_type = 'session_start')        AS sessions
         FROM events
-        WHERE site_id    = ${site_id}::uuid
+        WHERE site_id    = ${siteId}::uuid
           AND timestamp >= ${fromTs}
           AND timestamp <  ${toTs}
         GROUP BY 1
@@ -249,14 +253,27 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
       ORDER BY b.bucket
     `
 
-    const points: TimeseriesPoint[] = rows.map((r) => ({
+    return rows.map((r) => ({
       timestamp: r.bucket.toISOString(),
       pageviews: n(r.pageviews),
       visitors: n(r.visitors),
       sessions: n(r.sessions),
     }))
+  }
 
-    return reply.send(points)
+  app.get('/analytics/timeseries', { schema: { querystring: timeseriesSchema } }, async (request, reply) => {
+    const { site_id, from, to, tz, compare } = request.query
+    const current = await fetchTimeseries(site_id, from, to, tz)
+
+    if (compare === 'true') {
+      const prev = previousPeriod(from, to)
+      const previous = await fetchTimeseries(site_id, prev.from, prev.to, tz)
+      const response: TimeseriesResponse = { current, previous }
+      return reply.send(response)
+    }
+
+    // Backward compatible: return plain array when compare=false
+    return reply.send(current)
   })
 
   // ── E4-F3: Pages ─────────────────────────────────────────────────────────
@@ -838,5 +855,56 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
     }))
 
     return reply.send(stats)
+  })
+
+  // ── Entry/Exit Pages ─────────────────────────────────────────────────────
+
+  type EntryExitRow = { url: string; count: bigint }
+
+  app.get('/analytics/entry-exit-pages', { schema: { querystring: siteRangeSchema } }, async (request, reply) => {
+    const { site_id, from, to, tz } = request.query
+    const { fromTs, toTs } = tzBounds(from, to, tz)
+
+    const entryRows = await prisma.$queryRaw<EntryExitRow[]>`
+      SELECT entry_page AS url, COUNT(*)::bigint AS count
+      FROM sessions
+      WHERE site_id    = ${site_id}::uuid
+        AND started_at >= ${fromTs}
+        AND started_at <  ${toTs}
+        AND entry_page IS NOT NULL
+      GROUP BY entry_page
+      ORDER BY count DESC
+      LIMIT 50
+    `
+
+    const exitRows = await prisma.$queryRaw<EntryExitRow[]>`
+      SELECT exit_page AS url, COUNT(*)::bigint AS count
+      FROM sessions
+      WHERE site_id    = ${site_id}::uuid
+        AND started_at >= ${fromTs}
+        AND started_at <  ${toTs}
+        AND exit_page IS NOT NULL
+      GROUP BY exit_page
+      ORDER BY count DESC
+      LIMIT 50
+    `
+
+    const entryTotal = entryRows.reduce((s, r) => s + n(r.count), 0) || 1
+    const exitTotal = exitRows.reduce((s, r) => s + n(r.count), 0) || 1
+
+    const response: EntryExitPagesResponse = {
+      entry_pages: entryRows.map((r) => ({
+        url: r.url,
+        sessions: n(r.count),
+        percentage: Math.round((n(r.count) / entryTotal) * 1000) / 10,
+      })),
+      exit_pages: exitRows.map((r) => ({
+        url: r.url,
+        sessions: n(r.count),
+        percentage: Math.round((n(r.count) / exitTotal) * 1000) / 10,
+      })),
+    }
+
+    return reply.send(response)
   })
 }

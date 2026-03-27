@@ -36,6 +36,9 @@ export type {
   TimezoneStat,
   RegionStat,
   UtmStat,
+  EntryExitStat,
+  EntryExitPagesResponse,
+  TimeseriesResponse,
 } from './types/analytics.js'
 
 // Auth types

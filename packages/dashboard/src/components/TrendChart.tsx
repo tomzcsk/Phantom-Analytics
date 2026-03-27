@@ -7,6 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Line,
+  ComposedChart,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import type { TimeseriesPoint } from '@phantom/shared'
@@ -22,30 +24,32 @@ const METRIC_CONFIG: Record<Metric, { label: string; color: string; gradientId: 
 interface ChartPoint {
   label: string
   value: number
+  prev?: number | undefined
   raw: string
 }
 
-function toChartData(data: TimeseriesPoint[], metric: Metric, rangedays: number): ChartPoint[] {
-  return data.map((pt) => ({
+function toChartData(data: TimeseriesPoint[], metric: Metric, rangedays: number, prevData?: TimeseriesPoint[]): ChartPoint[] {
+  return data.map((pt, i) => ({
     label: rangedays <= 2
       ? format(parseISO(pt.timestamp), 'HH:mm')
-      : rangedays <= 90
-        ? format(parseISO(pt.timestamp), 'MMM d')
-        : format(parseISO(pt.timestamp), 'MMM d'),
+      : format(parseISO(pt.timestamp), 'MMM d'),
     value: pt[metric],
+    prev: prevData?.[i]?.[metric],
     raw: pt.timestamp,
   }))
 }
 
 interface CustomTooltipProps {
   active?: boolean
-  payload?: Array<{ value: number }>
+  payload?: Array<{ dataKey: string; value: number; color: string }>
   label?: string
+  showComparison?: boolean | undefined
 }
 
-function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+function CustomTooltip({ active, payload, label, showComparison }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
-  const item = payload[0]
+  const current = payload.find((p) => p.dataKey === 'value')
+  const prev = payload.find((p) => p.dataKey === 'prev')
   return (
     <div
       className="rounded-lg px-3 py-2 text-sm shadow-lg"
@@ -56,21 +60,29 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       }}
     >
       <p style={{ color: 'var(--color-text-muted)', fontSize: 11, marginBottom: 2 }}>{label}</p>
-      <p className="font-semibold tabular-nums">{(item?.value ?? 0).toLocaleString()}</p>
+      <p className="font-semibold tabular-nums">{(current?.value ?? 0).toLocaleString()}</p>
+      {showComparison && prev !== undefined && (
+        <p className="tabular-nums" style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
+          ก่อนหน้า: {(prev?.value ?? 0).toLocaleString()}
+        </p>
+      )}
     </div>
   )
 }
 
 interface TrendChartProps {
   data: TimeseriesPoint[]
-  rangedays?: number
-  loading?: boolean
+  comparisonData?: TimeseriesPoint[] | undefined
+  rangedays?: number | undefined
+  loading?: boolean | undefined
 }
 
-export function TrendChart({ data, rangedays = 30, loading = false }: TrendChartProps) {
+export function TrendChart({ data, comparisonData, rangedays = 30, loading = false }: TrendChartProps) {
   const [metric, setMetric] = useState<Metric>('pageviews')
+  const [showComparison, setShowComparison] = useState(false)
   const cfg = METRIC_CONFIG[metric]
-  const chartData = toChartData(data, metric, rangedays)
+  const hasComparison = comparisonData && comparisonData.length > 0
+  const chartData = toChartData(data, metric, rangedays, showComparison && hasComparison ? comparisonData : undefined)
 
   if (loading) {
     return (
@@ -88,26 +100,41 @@ export function TrendChart({ data, rangedays = 30, loading = false }: TrendChart
       className="rounded-xl p-6"
       style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
     >
-      {/* Metric toggle pills */}
-      <div className="flex items-center gap-2 mb-5">
-        {(Object.entries(METRIC_CONFIG) as [Metric, typeof cfg][]).map(([key, c]) => (
+      {/* Metric toggle pills + comparison toggle */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          {(Object.entries(METRIC_CONFIG) as [Metric, typeof cfg][]).map(([key, c]) => (
+            <button
+              key={key}
+              onClick={() => setMetric(key)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+              style={{
+                background: metric === key ? c.color + '22' : 'transparent',
+                color: metric === key ? c.color : 'var(--color-text-secondary)',
+                border: `1px solid ${metric === key ? c.color + '55' : 'var(--color-border)'}`,
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        {hasComparison && (
           <button
-            key={key}
-            onClick={() => setMetric(key)}
+            onClick={() => setShowComparison(!showComparison)}
             className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
             style={{
-              background: metric === key ? c.color + '22' : 'transparent',
-              color: metric === key ? c.color : 'var(--color-text-secondary)',
-              border: `1px solid ${metric === key ? c.color + '55' : 'var(--color-border)'}`,
+              background: showComparison ? 'var(--color-accent-amber)22' : 'transparent',
+              color: showComparison ? 'var(--color-accent-amber)' : 'var(--color-text-muted)',
+              border: `1px solid ${showComparison ? 'var(--color-accent-amber)55' : 'var(--color-border)'}`,
             }}
           >
-            {c.label}
+            เปรียบเทียบ
           </button>
-        ))}
+        )}
       </div>
 
       <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={chartData} margin={{ top: 5, right: 4, left: -20, bottom: 0 }}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 4, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id={cfg.gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={cfg.color} stopOpacity={0.25} />
@@ -128,7 +155,7 @@ export function TrendChart({ data, rangedays = 30, loading = false }: TrendChart
             axisLine={false}
             tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ stroke: cfg.color, strokeWidth: 1, strokeDasharray: '4 2' }} />
+          <Tooltip content={<CustomTooltip showComparison={showComparison && hasComparison} />} cursor={{ stroke: cfg.color, strokeWidth: 1, strokeDasharray: '4 2' }} />
           <Area
             type="monotone"
             dataKey="value"
@@ -138,7 +165,19 @@ export function TrendChart({ data, rangedays = 30, loading = false }: TrendChart
             dot={false}
             activeDot={{ r: 4, fill: cfg.color, stroke: 'var(--color-bg-card)', strokeWidth: 2 }}
           />
-        </AreaChart>
+          {showComparison && hasComparison && (
+            <Line
+              type="monotone"
+              dataKey="prev"
+              stroke={cfg.color}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              strokeOpacity={0.4}
+              dot={false}
+              activeDot={false}
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

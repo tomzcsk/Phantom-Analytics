@@ -38,7 +38,8 @@ export function Overview() {
 
   const siteId = activeSite?.id ?? ''
   const { data: overview, isLoading: ovLoading, isFetching: ovFetching } = useOverview(siteId, range)
-  const { data: timeseries, isLoading: tsLoading, isFetching: tsFetching } = useTimeseries(siteId, range)
+  const { data: tsResponse, isLoading: tsLoading, isFetching: tsFetching } = useTimeseries(siteId, range, true)
+  const timeseries = tsResponse?.current
   const { data: rtData, connected, reconnecting } = useRealtime({ siteId })
 
   const statusColor = reconnecting
@@ -127,6 +128,7 @@ export function Overview() {
       <div className="mb-5">
         <TrendChart
           data={timeseries ?? []}
+          comparisonData={tsResponse?.previous}
           rangedays={PRESET_DAYS[preset] ?? Math.ceil((new Date(range.to).getTime() - new Date(range.from).getTime()) / 86400000) + 1}
           loading={tsLoading}
         />

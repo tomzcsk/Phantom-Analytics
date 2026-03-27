@@ -321,3 +321,30 @@ export interface UtmStat {
   visitors: number
   percentage: number
 }
+
+/**
+ * Entry/exit page stat from session aggregation.
+ * Returned from GET /api/analytics/entry-exit-pages.
+ */
+export interface EntryExitStat {
+  url: string
+  sessions: number
+  percentage: number
+}
+
+/**
+ * Response from GET /api/analytics/entry-exit-pages.
+ */
+export interface EntryExitPagesResponse {
+  entry_pages: EntryExitStat[]
+  exit_pages: EntryExitStat[]
+}
+
+/**
+ * Timeseries response with optional previous period comparison.
+ * Returned from GET /api/analytics/timeseries.
+ */
+export interface TimeseriesResponse {
+  current: TimeseriesPoint[]
+  previous?: TimeseriesPoint[]
+}
