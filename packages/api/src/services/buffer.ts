@@ -65,6 +65,9 @@ async function flush(): Promise<void> {
         e.custom_properties !== undefined
           ? (e.custom_properties as Prisma.InputJsonValue)
           : Prisma.DbNull,
+      utm_source: e.utm_source ?? null,
+      utm_medium: e.utm_medium ?? null,
+      utm_campaign: e.utm_campaign ?? null,
       time_on_page: e.time_on_page ?? null,
       timestamp: new Date(e.timestamp),
     }

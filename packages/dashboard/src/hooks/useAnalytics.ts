@@ -12,6 +12,7 @@ import type {
   ClickStat,
   TimezoneStat,
   RegionStat,
+  UtmStat,
 } from '@phantom/shared'
 import { apiGet } from '../lib/api'
 import { useTimezone } from '../context/TimezoneContext'
@@ -107,6 +108,18 @@ export function useRegions(siteId: string, range: DateRange, countryCode: string
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId) && Boolean(countryCode),
+  })
+}
+
+export function useUtmSources(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  return useQuery({
+    queryKey: ['utm-sources', siteId, range, timezone.value],
+    queryFn: () =>
+      apiGet<UtmStat[]>(`/analytics/sources/utm?${rangeParams(siteId, range, timezone.value)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled: Boolean(siteId),
   })
 }
 

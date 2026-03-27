@@ -33,6 +33,9 @@ interface TrackPayload {
   time_on_page?: number
   custom_name?: string
   custom_properties?: Record<string, unknown>
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
   timestamp: string
 }
 
@@ -178,6 +181,26 @@ interface Window {
     dispatchPayload(body)
   }
 
+  // ── UTM Parameter Extraction ─────────────────────────────────────────────
+  // Extract utm_source, utm_medium, utm_campaign from URL query string.
+  // Values are lowercased and trimmed. Re-extracted on each SPA navigation.
+
+  function extractUtm(): Pick<TrackPayload, 'utm_source' | 'utm_medium' | 'utm_campaign'> {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const src = params.get('utm_source')?.trim().toLowerCase()
+      const med = params.get('utm_medium')?.trim().toLowerCase()
+      const cam = params.get('utm_campaign')?.trim().toLowerCase()
+      return {
+        ...(src ? { utm_source: src } : {}),
+        ...(med ? { utm_medium: med } : {}),
+        ...(cam ? { utm_campaign: cam } : {}),
+      }
+    } catch {
+      return {}
+    }
+  }
+
   // ── E2-F2: Pageview auto-capture ──────────────────────────────────────────
 
   let pageEnteredAt = Date.now()
@@ -185,7 +208,6 @@ interface Window {
   function trackPageview(): void {
     pageEnteredAt = Date.now()
 
-    // Cast: Zod-style optional `T | undefined` vs exactOptionalPropertyTypes `T?`
     void send({
       site_id: config.siteId,
       event_type: 'pageview',
@@ -196,6 +218,7 @@ interface Window {
       screen_height: screen.height,
       language: navigator.language,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ...extractUtm(),
       timestamp: new Date().toISOString(),
     } as Omit<TrackPayload, 'session_id'>)
   }

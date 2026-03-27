@@ -35,6 +35,7 @@ export type {
   ClickStat,
   TimezoneStat,
   RegionStat,
+  UtmStat,
 } from './types/analytics.js'
 
 // Auth types

@@ -96,6 +96,11 @@ CREATE TABLE IF NOT EXISTS events (
     custom_name       TEXT,
     custom_properties JSONB,
 
+    -- UTM parameters (client-reported, lowercase+trimmed)
+    utm_source        VARCHAR(255),
+    utm_medium        VARCHAR(255),
+    utm_campaign      VARCHAR(255),
+
     -- Timing
     time_on_page      INTEGER,   -- seconds
     timestamp         TIMESTAMPTZ NOT NULL,
@@ -130,6 +135,10 @@ CREATE INDEX IF NOT EXISTS idx_events_type_time
 CREATE INDEX IF NOT EXISTS idx_events_scroll_click
     ON events (site_id, event_type, timestamp DESC)
     WHERE event_type IN ('scroll', 'click');
+
+CREATE INDEX IF NOT EXISTS idx_events_utm
+    ON events (site_id, utm_source, utm_medium, utm_campaign, timestamp DESC)
+    WHERE utm_source IS NOT NULL;
 
 -- ── Sessions ─────────────────────────────────────────────────────────────
 -- Aggregated session records built from the events stream.

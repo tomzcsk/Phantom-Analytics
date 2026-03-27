@@ -309,3 +309,15 @@ export interface ClickStat {
   click_count: number
   unique_clickers: number
 }
+
+/**
+ * UTM parameter breakdown.
+ * Returned from GET /api/analytics/sources/utm.
+ */
+export interface UtmStat {
+  utm_source: string | null
+  utm_medium: string | null
+  utm_campaign: string | null
+  visitors: number
+  percentage: number
+}

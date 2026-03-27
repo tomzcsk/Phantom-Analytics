@@ -56,6 +56,15 @@ export interface EventPayload {
   /** Arbitrary metadata attached to custom events. Must be JSON-serializable. */
   custom_properties?: Record<string, unknown>
 
+  /** UTM source parameter (e.g. 'google', 'newsletter'). Lowercase, trimmed. */
+  utm_source?: string
+
+  /** UTM medium parameter (e.g. 'cpc', 'email'). Lowercase, trimmed. */
+  utm_medium?: string
+
+  /** UTM campaign parameter (e.g. 'spring_sale'). Lowercase, trimmed. */
+  utm_campaign?: string
+
   /** ISO 8601 timestamp of when the event occurred (client-side clock). */
   timestamp: string
 }

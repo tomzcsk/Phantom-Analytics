@@ -57,6 +57,11 @@ const collectBodySchema = z.object({
   custom_name: z.string().max(100).optional(),
   custom_properties: z.record(z.unknown()).optional(),
 
+  /** UTM parameters — optional, lowercased and trimmed by tracker */
+  utm_source: z.string().max(255).transform(s => s.trim().toLowerCase() || undefined).optional(),
+  utm_medium: z.string().max(255).transform(s => s.trim().toLowerCase() || undefined).optional(),
+  utm_campaign: z.string().max(255).transform(s => s.trim().toLowerCase() || undefined).optional(),
+
   /** ISO 8601 client-side timestamp */
   timestamp: z.string().datetime({ message: 'timestamp must be an ISO 8601 datetime string' }),
 })

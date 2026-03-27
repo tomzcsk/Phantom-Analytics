@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { useSite } from '../context/SiteContext'
 import { useDateRange } from '../context/DateRangeContext'
-import { useSources, useDevices, useGeo, useTimezones, useRegions } from '../hooks/useAnalytics'
+import { useSources, useDevices, useGeo, useTimezones, useRegions, useUtmSources } from '../hooks/useAnalytics'
 import type { SourceStat } from '@phantom/shared'
 import { DatePresets } from '../components/DatePresets'
 import { RefreshButton } from '../components/RefreshButton'
@@ -81,7 +81,7 @@ function BarTooltip({ active, payload, label }: BarTooltipProps) {
   )
 }
 
-type Tab = 'sources' | 'devices' | 'geo'
+type Tab = 'sources' | 'utm' | 'devices' | 'geo'
 
 function countryFlag(code: string): string {
   return code
@@ -101,6 +101,7 @@ export function Sources() {
   const { data: devicesData, isLoading: devLoading, isFetching: devFetching } = useDevices(siteId, range)
   const { data: geoData, isLoading: geoLoading, isFetching: geoFetching } = useGeo(siteId, range)
   const { data: tzData, isLoading: tzLoading, isFetching: tzFetching } = useTimezones(siteId, range)
+  const { data: utmData, isLoading: utmLoading, isFetching: utmFetching } = useUtmSources(siteId, range)
   const [selectedCountry, setSelectedCountry] = useState<{ code: string; name: string } | null>(null)
   const { data: regionData, isLoading: regionLoading } = useRegions(siteId, range, selectedCountry?.code ?? '')
 
@@ -153,6 +154,16 @@ export function Sources() {
               แหล่งทราฟฟิก
             </button>
             <button
+              onClick={() => setTab('utm')}
+              className="px-3 py-1 rounded-md text-sm font-medium transition-colors"
+              style={{
+                background: tab === 'utm' ? 'var(--color-bg-surface)' : 'transparent',
+                color: tab === 'utm' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+              }}
+            >
+              UTM
+            </button>
+            <button
               onClick={() => setTab('devices')}
               className="px-3 py-1 rounded-md text-sm font-medium transition-colors"
               style={{
@@ -176,8 +187,8 @@ export function Sources() {
         </div>
 
         <div className="flex items-center gap-2">
-          <RefreshButton loading={srcFetching || devFetching || geoFetching || tzFetching} />
-          <DatePresets loading={srcFetching || devFetching || geoFetching || tzFetching} />
+          <RefreshButton loading={srcFetching || devFetching || geoFetching || tzFetching || utmFetching} />
+          <DatePresets loading={srcFetching || devFetching || geoFetching || tzFetching || utmFetching} />
         </div>
       </div>
 
@@ -268,6 +279,54 @@ export function Sources() {
               <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>ไม่มีข้อมูลแหล่งอ้างอิง</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* UTM tab */}
+      {tab === 'utm' && (
+        <div
+          className="rounded-xl p-5"
+          style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+        >
+          <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+            UTM Parameters
+          </h2>
+          {utmLoading ? (
+            <div className="flex flex-col gap-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="animate-pulse rounded h-8" style={{ background: 'var(--color-bg-surface)' }} />
+              ))}
+            </div>
+          ) : (utmData ?? []).length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <th className="text-left py-2 px-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Source</th>
+                    <th className="text-left py-2 px-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Medium</th>
+                    <th className="text-left py-2 px-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Campaign</th>
+                    <th className="text-right py-2 px-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>ผู้เข้าชม</th>
+                    <th className="text-right py-2 px-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(utmData ?? []).map((u, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td className="py-2 px-3" style={{ color: 'var(--color-text-primary)' }}>{u.utm_source ?? '—'}</td>
+                      <td className="py-2 px-3" style={{ color: 'var(--color-text-primary)' }}>{u.utm_medium ?? '—'}</td>
+                      <td className="py-2 px-3" style={{ color: 'var(--color-text-primary)' }}>{u.utm_campaign ?? '—'}</td>
+                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: 'var(--color-text-primary)' }}>{u.visitors.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{u.percentage.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>
+              ไม่มีข้อมูล UTM ในช่วงนี้
+            </p>
+          )}
         </div>
       )}
 

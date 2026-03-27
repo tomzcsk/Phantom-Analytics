@@ -16,6 +16,7 @@ import type {
   ClickStat,
   TimezoneStat,
   RegionStat,
+  UtmStat,
 } from '@phantom/shared'
 import { prisma } from '../db/client.js'
 import { getRegionName } from '../services/regionNames.js'
@@ -440,6 +441,44 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
         percentage: Math.round((n(r.count) / refTotal) * 1000) / 10,
       })),
     }
+
+    return reply.send(response)
+  })
+
+  // ── UTM Sources ─────────────────────────────────────────────────────────
+
+  type UtmRow = { utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; count: bigint }
+
+  app.get('/analytics/sources/utm', { schema: { querystring: siteRangeSchema } }, async (request, reply) => {
+    const { site_id, from, to, tz } = request.query
+    const { fromTs, toTs } = tzBounds(from, to, tz)
+
+    const rows = await prisma.$queryRaw<UtmRow[]>`
+      SELECT
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        COUNT(DISTINCT session_id)::bigint AS count
+      FROM events
+      WHERE site_id    = ${site_id}::uuid
+        AND event_type = 'pageview'
+        AND utm_source IS NOT NULL
+        AND timestamp >= ${fromTs}
+        AND timestamp <  ${toTs}
+      GROUP BY utm_source, utm_medium, utm_campaign
+      ORDER BY count DESC
+      LIMIT 50
+    `
+
+    const total = rows.reduce((sum, r) => sum + n(r.count), 0) || 1
+
+    const response: UtmStat[] = rows.map((r) => ({
+      utm_source: r.utm_source,
+      utm_medium: r.utm_medium,
+      utm_campaign: r.utm_campaign,
+      visitors: n(r.count),
+      percentage: Math.round((n(r.count) / total) * 1000) / 10,
+    }))
 
     return reply.send(response)
   })

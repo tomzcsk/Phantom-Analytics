@@ -59,6 +59,11 @@ model Event {
   custom_name       String?
   custom_properties Json?   @db.JsonB
 
+  // UTM parameters (client-reported, lowercase+trimmed)
+  utm_source   String?   @db.VarChar(255)
+  utm_medium   String?   @db.VarChar(255)
+  utm_campaign String?   @db.VarChar(255)
+
   // Timing
   time_on_page Int?      // seconds
   timestamp    DateTime  @db.Timestamptz

@@ -29,7 +29,7 @@ function TimeAgo({ timestamp }: { timestamp: string }) {
   return <>{text}</>
 }
 
-const PRESET_DAYS: Record<DatePreset, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 }
+const PRESET_DAYS: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 }
 
 export function Overview() {
   const { activeSite } = useSite()
@@ -120,7 +120,7 @@ export function Overview() {
       <div className="mb-5">
         <TrendChart
           data={timeseries ?? []}
-          rangedays={PRESET_DAYS[preset]}
+          rangedays={PRESET_DAYS[preset] ?? Math.ceil((new Date(range.to).getTime() - new Date(range.from).getTime()) / 86400000) + 1}
           loading={tsLoading}
         />
       </div>

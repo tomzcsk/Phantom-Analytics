@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useDateRange } from '../context/DateRangeContext'
 import type { DatePreset } from '../context/DateRangeContext'
 
-const PRESETS: { label: string; value: DatePreset }[] = [
+const PRESETS: { label: string; value: Exclude<DatePreset, 'custom'> }[] = [
   { label: 'วันนี้', value: '1d' },
   { label: '7 วัน', value: '7d' },
   { label: '30 วัน', value: '30d' },
@@ -24,7 +24,7 @@ export function DatePresets({ loading = false }: DatePresetsProps) {
     if (!loading) setClicked(null)
   }, [loading])
 
-  function handleClick(value: DatePreset) {
+  function handleClick(value: Exclude<DatePreset, 'custom'>) {
     if (value === preset && !loading) return
     setClicked(value)
     setPreset(value)
