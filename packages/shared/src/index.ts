@@ -39,6 +39,11 @@ export type {
   EntryExitStat,
   EntryExitPagesResponse,
   TimeseriesResponse,
+  CampaignStat,
+  CampaignReportResponse,
+  CampaignTimeseriesPoint,
+  PublicStatsResponse,
+  ApiKeyInfo,
 } from './types/analytics.js'
 
 // Auth types

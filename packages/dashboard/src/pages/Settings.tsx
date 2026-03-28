@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Edit3, Save, ChevronDown, Plus, Trash2, Link2, Shield } from 'lucide-react'
+import { Settings as SettingsIcon, Edit3, Save, ChevronDown, Plus, Trash2, Link2, Shield, Key, Copy, Eye, EyeOff } from 'lucide-react'
 import { useSite } from '../context/SiteContext'
 import { apiPut, apiPost, apiGet, apiDelete } from '../lib/api'
 import { CopyButton } from '../components/CopyButton'
@@ -364,6 +364,220 @@ function TwoFactorCard() {
   )
 }
 
+interface ApiKeyItem {
+  id: string
+  label: string
+  key_prefix: string
+  scopes: string[]
+  expires_at: string | null
+  last_used: string | null
+  created_at: string
+  key?: string
+}
+
+function ApiKeysCard({ siteId }: { siteId: string }) {
+  const { isDeveloper } = useAuth()
+  const [keys, setKeys] = useState<ApiKeyItem[]>([])
+  const [showForm, setShowForm] = useState(false)
+  const [label, setLabel] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ApiKeyItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [newKey, setNewKey] = useState<string | null>(null)
+  const [showNewKey, setShowNewKey] = useState(false)
+
+  useEffect(() => {
+    if (!siteId) return
+    void apiGet<ApiKeyItem[]>(`/api-keys?site_id=${siteId}`).then(setKeys)
+  }, [siteId])
+
+  async function handleCreate() {
+    setSaving(true)
+    try {
+      const result = await apiPost<ApiKeyItem & { key: string }>('/api-keys', { site_id: siteId, label, scopes: ['read'] })
+      setNewKey(result.key)
+      setKeys((prev) => [result, ...prev])
+      setShowForm(false)
+      setLabel('')
+      void toastSuccess('สร้าง API key สำเร็จ')
+    } catch {
+      void toastError('สร้าง API key ไม่สำเร็จ')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await apiDelete(`/api-keys/${deleteTarget.id}?site_id=${siteId}`)
+      setKeys((prev) => prev.filter((k) => k.id !== deleteTarget.id))
+      void toastSuccess('ลบ API key สำเร็จ')
+    } catch {
+      void toastError('ลบไม่สำเร็จ')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
+
+  const embedCode = newKey
+    ? `<div id="phantom-widget"></div>\n<script\n  src="${window.location.origin}/embed.js"\n  data-phantom-embed\n  data-api-key="${newKey}"\n  data-host="${window.location.origin}"\n  data-container="phantom-widget"\n  async\n></script>`
+    : ''
+
+  const apiExample = newKey
+    ? `curl -H "X-API-Key: ${newKey}" \\\n  "${window.location.origin}/api/v1/stats"`
+    : ''
+
+  if (!isDeveloper) return null
+
+  return (
+    <div
+      className="rounded-xl p-5"
+      style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Key size={14} style={{ color: 'var(--color-accent-purple)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            API Keys
+          </h2>
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+          style={{ background: 'var(--color-accent-purple)', color: '#fff' }}
+        >
+          <Plus size={12} /> สร้าง Key
+        </button>
+      </div>
+
+      <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
+        ใช้ API key เพื่อเข้าถึง Public API หรือฝัง embed widget ในเว็บภายนอก
+      </p>
+
+      {/* New key created — show once */}
+      {newKey && (
+        <div className="mb-4 rounded-lg p-4" style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-accent-green)' }}>
+          <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-accent-green)' }}>
+            API Key ใหม่ — คัดลอกเก็บไว้ จะแสดงครั้งเดียวเท่านั้น
+          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <code className="flex-1 text-xs font-mono break-all" style={{ color: 'var(--color-text-primary)' }}>
+              {showNewKey ? newKey : newKey.slice(0, 8) + '•'.repeat(32)}
+            </code>
+            <button onClick={() => setShowNewKey(!showNewKey)} className="p-1" style={{ color: 'var(--color-text-muted)' }}>
+              {showNewKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+            <CopyButton text={newKey} />
+          </div>
+
+          <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Embed Widget:</p>
+          <div className="relative mb-3">
+            <pre className="text-xs font-mono rounded-lg p-3 overflow-x-auto" style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
+              {embedCode}
+            </pre>
+            <div className="absolute top-2 right-2"><CopyButton text={embedCode} /></div>
+          </div>
+
+          <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>API ตัวอย่าง:</p>
+          <div className="relative">
+            <pre className="text-xs font-mono rounded-lg p-3 overflow-x-auto" style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
+              {apiExample}
+            </pre>
+            <div className="absolute top-2 right-2"><CopyButton text={apiExample} /></div>
+          </div>
+
+          <button
+            onClick={() => setNewKey(null)}
+            className="text-xs mt-3 px-2 py-1 rounded"
+            style={{ color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}
+          >
+            ปิด
+          </button>
+        </div>
+      )}
+
+      <FormModal open={showForm} title="สร้าง API Key" onClose={() => setShowForm(false)}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-muted)' }}>ชื่อ Key</p>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="เช่น Widget หน้าแรก"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => void handleCreate()}
+              disabled={saving || !label.trim()}
+              className="px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ background: 'var(--color-accent-purple)', color: '#fff', opacity: saving || !label.trim() ? 0.6 : 1 }}
+            >
+              {saving ? 'กำลังสร้าง…' : 'สร้าง'}
+            </button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm" style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+              ยกเลิก
+            </button>
+          </div>
+        </div>
+      </FormModal>
+
+      {keys.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {keys.map((k) => {
+            const expired = k.expires_at ? new Date(k.expires_at) < new Date() : false
+            return (
+              <div
+                key={k.id}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
+                style={{ background: 'var(--color-bg-surface)' }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm" style={{ color: expired ? 'var(--color-text-muted)' : 'var(--color-text-primary)' }}>
+                    {k.label}
+                    {expired && <span className="ml-2 text-xs" style={{ color: 'var(--color-accent-red)' }}>หมดอายุ</span>}
+                  </p>
+                  <p className="text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>
+                    {k.key_prefix}•••
+                    {k.last_used && <span className="ml-2">ใช้ล่าสุด: {new Date(k.last_used).toLocaleDateString('th-TH')}</span>}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDeleteTarget(k)}
+                  className="p-1.5 rounded-lg shrink-0"
+                  style={{ color: 'var(--color-accent-red)' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          ยังไม่มี API key — สร้างเพื่อใช้ Public API หรือ Embed Widget
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="ลบ API Key"
+        message={`ยืนยันลบ "${deleteTarget?.label ?? ''}" หรือไม่? แอปที่ใช้ key นี้จะหยุดทำงานทันที`}
+        confirmLabel="ลบ"
+        danger
+        loading={deleting}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  )
+}
+
 function CodeBlock({ code, label }: { code: string; label: string }) {
   return (
     <div className="mb-4">
@@ -702,6 +916,9 @@ phantom.track('register_success')
 
           {/* Share Links */}
           <ShareLinksCard siteId={activeSite.id} />
+
+          {/* API Keys */}
+          <ApiKeysCard siteId={activeSite.id} />
         </div>
 
         {/* Right column — 2FA + Installation + Usage examples */}

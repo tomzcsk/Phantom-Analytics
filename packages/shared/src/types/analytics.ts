@@ -348,3 +348,66 @@ export interface TimeseriesResponse {
   current: TimeseriesPoint[]
   previous?: TimeseriesPoint[]
 }
+
+// ── Campaign Report types ──────────────────────────────────────────────
+
+/**
+ * A single UTM campaign with detailed metrics.
+ * Returned from GET /api/analytics/campaigns.
+ */
+export interface CampaignStat {
+  utm_campaign: string
+  utm_source: string | null
+  utm_medium: string | null
+  visitors: number
+  pageviews: number
+  bounce_rate: number
+  avg_duration: number
+  conversions: number
+  /** Period-over-period change in visitors (percentage). */
+  visitors_change: number
+}
+
+/**
+ * Campaign report response including timeseries per campaign.
+ */
+export interface CampaignReportResponse {
+  campaigns: CampaignStat[]
+  timeseries: CampaignTimeseriesPoint[]
+}
+
+/**
+ * Timeseries data point grouped by campaign.
+ */
+export interface CampaignTimeseriesPoint {
+  timestamp: string
+  campaign: string
+  visitors: number
+}
+
+// ── Public API response types ──────────────────────────────────────────
+
+/**
+ * Public API stats response (simplified overview).
+ * Returned from GET /api/v1/stats.
+ */
+export interface PublicStatsResponse {
+  pageviews: number
+  visitors: number
+  bounce_rate: number
+  avg_duration: number
+  period: { from: string; to: string }
+}
+
+/**
+ * Public API key metadata (returned on creation).
+ */
+export interface ApiKeyInfo {
+  id: string
+  label: string
+  key_prefix: string
+  scopes: string[]
+  expires_at: string | null
+  last_used: string | null
+  created_at: string
+}

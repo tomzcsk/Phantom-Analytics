@@ -30,6 +30,7 @@ model Site {
   goals           Goal[]
   share_links     ShareLink[]
   user_sites      UserSite[]
+  api_keys        ApiKey[]
 
   @@map("sites")
 }
@@ -220,4 +221,21 @@ model ClickVariable {
 
   @@unique([site_id, key])
   @@map("click_variables")
+}
+
+model ApiKey {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id    String   @db.Uuid
+  label      String
+  key_hash   String   @unique   // SHA-256 hash of the API key (never store plaintext)
+  key_prefix String   @db.VarChar(8) // first 8 chars for display (e.g. "pa_abc12...")
+  scopes     String[] @default(["read"]) // 'read' | 'write'
+  expires_at DateTime? @db.Timestamptz
+  last_used  DateTime? @db.Timestamptz
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  site Site @relation(fields: [site_id], references: [id])
+
+  @@index([site_id])
+  @@map("api_keys")
 }

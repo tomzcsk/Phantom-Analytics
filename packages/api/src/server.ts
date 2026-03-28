@@ -24,6 +24,10 @@ import { activityLogRoute } from './routes/activityLog.js'
 import { shareLinksRoute } from './routes/shareLinks.js'
 import { goalsRoute } from './routes/goals.js'
 import { eventsRoute } from './routes/events.js'
+import { apiKeysRoute } from './routes/apiKeys.js'
+import { publicApiRoute } from './routes/publicApi.js'
+import { campaignsRoute } from './routes/campaigns.js'
+import { embedRoute } from './routes/embed.js'
 
 import { startSessionAggregator } from './services/sessionAggregator.js'
 import { startDataRetentionLoop } from './services/dataRetention.js'
@@ -159,6 +163,10 @@ async function bootstrap(): Promise<void> {
   await server.register(shareLinksRoute, { prefix: '/api' })
   await server.register(goalsRoute, { prefix: '/api' })
   await server.register(eventsRoute, { prefix: '/api' })
+  await server.register(apiKeysRoute, { prefix: '/api' })
+  await server.register(publicApiRoute, { prefix: '/api' })
+  await server.register(campaignsRoute, { prefix: '/api' })
+  await server.register(embedRoute)
 
   // ── Background jobs ───────────────────────────────────────────────────────
 

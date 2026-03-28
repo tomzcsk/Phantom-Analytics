@@ -15,6 +15,7 @@ import type {
   RegionStat,
   UtmStat,
   EntryExitPagesResponse,
+  CampaignReportResponse,
 } from '@phantom/shared'
 import { apiGet } from '../lib/api'
 import { useTimezone } from '../context/TimezoneContext'
@@ -250,6 +251,19 @@ export function useClickVariables(siteId: string) {
     queryKey: ['click-variables', siteId],
     queryFn: () => apiGet<ClickVariable[]>(`/click-variables?site_id=${encodeURIComponent(siteId)}`),
     staleTime: 30_000,
+    enabled: Boolean(siteId),
+  })
+}
+
+export function useCampaigns(siteId: string, range: DateRange) {
+  const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
+  return useQuery({
+    queryKey: ['campaigns', siteId, range, timezone.value, filters],
+    queryFn: () =>
+      apiGet<CampaignReportResponse>(`/analytics/campaigns?${rangeParams(siteId, range, timezone.value, filterParams)}`),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     enabled: Boolean(siteId),
   })
 }

@@ -20,6 +20,7 @@ import { PublicDashboard } from './pages/PublicDashboard'
 import { ResetPassword } from './pages/ResetPassword'
 import { Goals } from './pages/Goals'
 import { EventExplorer } from './pages/EventExplorer'
+import { Campaigns } from './pages/Campaigns'
 
 function LoadingSpinner() {
   return (
@@ -92,6 +93,7 @@ function DashboardLayout() {
           <Route path="/journeys" element={<Journeys />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/events" element={<EventExplorer />} />
+          <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/settings" element={<AuthGuard requiredRole="developer"><Settings /></AuthGuard>} />
           <Route
             path="/users"

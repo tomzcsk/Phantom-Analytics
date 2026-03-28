@@ -96,6 +96,23 @@ CREATE TABLE IF NOT EXISTS share_links (
 
 CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links (token);
 
+-- ── API Keys (Public API authentication) ────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id         UUID        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    site_id    UUID        NOT NULL REFERENCES sites(id),
+    label      TEXT        NOT NULL,
+    key_hash   TEXT        NOT NULL UNIQUE,  -- SHA-256 hash, never store plaintext
+    key_prefix VARCHAR(8)  NOT NULL,         -- first 8 chars for display
+    scopes     TEXT[]      NOT NULL DEFAULT ARRAY['read'],
+    expires_at TIMESTAMPTZ,
+    last_used  TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_site ON api_keys (site_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys (key_hash);
+
 -- ── Events (TimescaleDB hypertable) ─────────────────────────────────────
 -- This is the core append-only event stream.
 -- Partitioned by time via TimescaleDB for fast range queries.
