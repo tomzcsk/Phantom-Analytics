@@ -21,6 +21,7 @@ import { ResetPassword } from './pages/ResetPassword'
 import { Goals } from './pages/Goals'
 import { EventExplorer } from './pages/EventExplorer'
 import { Campaigns } from './pages/Campaigns'
+import { Notifications } from './pages/Notifications'
 
 function LoadingSpinner() {
   return (
@@ -94,6 +95,7 @@ function DashboardLayout() {
           <Route path="/goals" element={<Goals />} />
           <Route path="/events" element={<EventExplorer />} />
           <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings" element={<AuthGuard requiredRole="developer"><Settings /></AuthGuard>} />
           <Route
             path="/users"

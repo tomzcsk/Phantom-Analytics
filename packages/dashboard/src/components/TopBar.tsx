@@ -4,6 +4,7 @@ import { useTimezone, TIMEZONES } from '../context/TimezoneContext'
 import { FormModal } from './FormModal'
 import { DateRangePicker } from './DateRangePicker'
 import { FilterBar } from './FilterBar'
+import { NotificationBell } from './NotificationBell'
 
 function formatTime(tz: string): string {
   return new Date().toLocaleString('th-TH', {
@@ -36,6 +37,7 @@ export function TopBar() {
         style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-card)' }}
       >
         <FilterBar />
+        <NotificationBell />
         <div className="w-px h-5" style={{ background: 'var(--color-border)' }} />
         <DateRangePicker />
         <button

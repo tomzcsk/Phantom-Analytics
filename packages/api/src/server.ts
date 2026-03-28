@@ -28,9 +28,11 @@ import { apiKeysRoute } from './routes/apiKeys.js'
 import { publicApiRoute } from './routes/publicApi.js'
 import { campaignsRoute } from './routes/campaigns.js'
 import { embedRoute } from './routes/embed.js'
+import { notificationsRoute } from './routes/notifications.js'
 
 import { startSessionAggregator } from './services/sessionAggregator.js'
 import { startDataRetentionLoop } from './services/dataRetention.js'
+import { startGoalChecker } from './services/goalChecker.js'
 
 /**
  * Phantom Analytics — Fastify API Server
@@ -167,6 +169,7 @@ async function bootstrap(): Promise<void> {
   await server.register(publicApiRoute, { prefix: '/api' })
   await server.register(campaignsRoute, { prefix: '/api' })
   await server.register(embedRoute)
+  await server.register(notificationsRoute, { prefix: '/api' })
 
   // ── Background jobs ───────────────────────────────────────────────────────
 
@@ -175,6 +178,7 @@ async function bootstrap(): Promise<void> {
   startFlushLoop()
   startSessionAggregator()
   startDataRetentionLoop()
+  startGoalChecker()
 
   server.log.info('Bootstrap complete — flush loop started')
 }

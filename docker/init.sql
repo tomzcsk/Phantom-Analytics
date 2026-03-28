@@ -96,6 +96,39 @@ CREATE TABLE IF NOT EXISTS share_links (
 
 CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links (token);
 
+-- ── Notifications (Goal alerts) ──────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id           UUID        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    site_id      UUID        NOT NULL REFERENCES sites(id),
+    goal_id      UUID        NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+    type         TEXT        NOT NULL CHECK (type IN ('goal_reached', 'goal_warning', 'goal_exceeded')),
+    title        TEXT        NOT NULL,
+    read         BOOLEAN     NOT NULL DEFAULT false,
+    period_start DATE        NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (goal_id, type, period_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_site_read ON notifications (site_id, read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications (created_at DESC);
+
+-- ── Goal Snapshots (Period history) ─────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS goal_snapshots (
+    id           UUID        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    goal_id      UUID        NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+    period_start DATE        NOT NULL,
+    period_end   DATE        NOT NULL,
+    actual_value INT         NOT NULL,
+    target_value INT         NOT NULL,
+    percentage   FLOAT       NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (goal_id, period_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_goal_snapshots_goal ON goal_snapshots (goal_id);
+
 -- ── API Keys (Public API authentication) ────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS api_keys (

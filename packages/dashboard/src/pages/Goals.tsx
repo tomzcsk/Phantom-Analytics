@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Target, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, Target, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts'
 import { useSite } from '../context/SiteContext'
 import { apiGet, apiPost, apiDelete } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -16,13 +17,125 @@ interface GoalWithProgress {
   period: string
   current_value: number
   percentage: number
+  status: 'on_track' | 'at_risk' | 'behind' | 'reached' | 'exceeded'
+  pace_projected: number
+  time_elapsed_pct: number
+  previous_percentage: number | null
   created_at: string
+}
+
+interface HistoryPoint {
+  period_start: string
+  period_end: string
+  actual_value: number
+  target_value: number
+  percentage: number
 }
 
 const PERIOD_LABELS: Record<string, string> = {
   daily: 'รายวัน',
   weekly: 'รายสัปดาห์',
   monthly: 'รายเดือน',
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  reached: { label: 'ถึงเป้า', color: 'var(--color-accent-green)', bg: 'rgba(54,217,99,0.15)' },
+  exceeded: { label: 'เกินเป้า', color: 'var(--color-accent-blue)', bg: 'rgba(79,142,247,0.15)' },
+  on_track: { label: 'กำลังไปได้ดี', color: 'var(--color-accent-amber)', bg: 'rgba(247,184,75,0.15)' },
+  at_risk: { label: 'เสี่ยง', color: '#F79B4B', bg: 'rgba(247,155,75,0.15)' },
+  behind: { label: 'ต่ำกว่าเป้า', color: 'var(--color-accent-red)', bg: 'rgba(247,82,82,0.15)' },
+}
+
+function PaceText({ goal }: { goal: GoalWithProgress }) {
+  const periodName = goal.period === 'daily' ? 'สิ้นวัน' : goal.period === 'weekly' ? 'สิ้นสัปดาห์' : 'สิ้นเดือน'
+
+  if (goal.status === 'reached' || goal.status === 'exceeded') return null
+
+  return (
+    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+      คาดว่าจะได้ ~{goal.pace_projected.toLocaleString()} {periodName}
+    </p>
+  )
+}
+
+function PrevComparison({ goal }: { goal: GoalWithProgress }) {
+  if (goal.previous_percentage === null) return null
+  const diff = goal.percentage - goal.previous_percentage
+  const periodName = goal.period === 'daily' ? 'เมื่อวาน' : goal.period === 'weekly' ? 'สัปดาห์ก่อน' : 'เดือนก่อน'
+
+  if (diff > 0) return (
+    <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: 'var(--color-accent-green)' }}>
+      <TrendingUp size={11} /> +{Math.round(diff)}% จาก{periodName}
+    </span>
+  )
+  if (diff < 0) return (
+    <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: 'var(--color-accent-red)' }}>
+      <TrendingDown size={11} /> {Math.round(diff)}% จาก{periodName}
+    </span>
+  )
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+      <Minus size={11} /> เท่ากับ{periodName}
+    </span>
+  )
+}
+
+interface HistoryTooltipProps {
+  active?: boolean
+  payload?: Array<{ value: number; payload: { period_label: string; actual_value: number; target_value: number; percentage: number } }>
+}
+
+function HistoryTooltip({ active, payload }: HistoryTooltipProps) {
+  if (!active || !payload || !payload[0]) return null
+  const d = payload[0].payload
+  return (
+    <div className="rounded-lg px-3 py-2 text-sm shadow-lg" style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
+      <p className="text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>{d.period_label}</p>
+      <p className="font-semibold tabular-nums">{d.actual_value.toLocaleString()} / {d.target_value.toLocaleString()} ({d.percentage}%)</p>
+    </div>
+  )
+}
+
+function GoalHistory({ goalId }: { goalId: string }) {
+  const [history, setHistory] = useState<HistoryPoint[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    void apiGet<HistoryPoint[]>(`/goals/${goalId}/history?limit=8`)
+      .then(setHistory)
+      .finally(() => setLoading(false))
+  }, [goalId])
+
+  if (loading) return <div className="animate-pulse rounded h-40" style={{ background: 'var(--color-bg-surface)' }} />
+  if (history.length === 0) return <p className="text-xs py-4 text-center" style={{ color: 'var(--color-text-muted)' }}>ยังไม่มีข้อมูลย้อนหลัง — จะเริ่มเก็บเมื่อจบรอบแรก</p>
+
+  const chartData = history.map((h) => ({
+    ...h,
+    period_label: `${new Date(h.period_start).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} - ${new Date(h.period_end).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`,
+    label: new Date(h.period_start).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+  }))
+
+  const targetLine = history[0]?.target_value ?? 0
+
+  return (
+    <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+      <p className="text-xs font-medium mb-3" style={{ color: 'var(--color-text-secondary)' }}>ย้อนหลัง</p>
+      <ResponsiveContainer width="100%" height={160}>
+        <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.5} />
+          <XAxis dataKey="label" tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
+          <Tooltip content={<HistoryTooltip />} />
+          <ReferenceLine y={targetLine} stroke="var(--color-accent-blue)" strokeDasharray="4 4" strokeWidth={1.5} />
+          <Bar dataKey="actual_value" radius={[4, 4, 0, 0]}>
+            {chartData.map((entry, i) => (
+              <Cell key={i} fill={entry.percentage >= 100 ? 'var(--color-accent-green)' : 'var(--color-accent-red)'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
 export function Goals() {
@@ -35,6 +148,7 @@ export function Goals() {
   const [deleteTarget, setDeleteTarget] = useState<GoalWithProgress | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [tick, setTick] = useState(0)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   // Create form
   const [name, setName] = useState('')
@@ -89,11 +203,7 @@ export function Goals() {
         <div className="flex items-center gap-2">
           <RefreshButton onRefresh={() => setTick((t) => t + 1)} />
           {isDeveloper && (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
-              style={{ background: 'var(--color-accent-blue)', color: '#fff' }}
-            >
+            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium" style={{ background: 'var(--color-accent-blue)', color: '#fff' }}>
               <Plus size={14} /> เป้าหมายใหม่
             </button>
           )}
@@ -148,8 +258,9 @@ export function Goals() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {goals.map((goal) => {
-            const isComplete = goal.percentage >= 100
-            const color = isComplete ? 'var(--color-accent-green)' : 'var(--color-accent-blue)'
+            const cfg = (STATUS_CONFIG[goal.status] ?? STATUS_CONFIG['behind']) as { label: string; color: string; bg: string }
+            const isExpanded = expanded === goal.id
+            const progressColor = goal.status === 'reached' || goal.status === 'exceeded' ? 'var(--color-accent-green)' : cfg.color
             return (
               <div key={goal.id} className="rounded-xl p-5" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
                 <div className="flex items-start justify-between mb-3">
@@ -160,24 +271,61 @@ export function Goals() {
                       {' · '}{PERIOD_LABELS[goal.period]}
                     </p>
                   </div>
-                  {isDeveloper && (
-                    <button onClick={() => setDeleteTarget(goal)} className="p-1.5 rounded-lg" style={{ color: 'var(--color-accent-red)' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Status badge */}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>
+                      {cfg.label}
+                    </span>
+                    {isDeveloper && (
+                      <button onClick={() => setDeleteTarget(goal)} className="p-1.5 rounded-lg" style={{ color: 'var(--color-accent-red)' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
+
                 <div className="flex items-end justify-between mb-2">
-                  <span className="text-2xl font-bold tabular-nums" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>
+                  <span className="text-2xl font-bold tabular-nums" style={{ color: progressColor, fontFamily: "'JetBrains Mono', monospace" }}>
                     {goal.current_value.toLocaleString()}
                   </span>
                   <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                     / {goal.target_value.toLocaleString()}
                   </span>
                 </div>
+
+                {/* Progress bar */}
                 <div className="rounded-full overflow-hidden mb-1" style={{ background: 'var(--color-bg-surface)', height: 8 }}>
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${goal.percentage}%`, background: color }} />
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(goal.percentage, 100)}%`, background: progressColor }} />
                 </div>
-                <p className="text-xs text-right tabular-nums" style={{ color }}>{goal.percentage}%</p>
+
+                <div className="flex items-center justify-between">
+                  <p className="text-xs tabular-nums" style={{ color: progressColor }}>{goal.percentage}%</p>
+                  <PrevComparison goal={goal} />
+                </div>
+
+                <PaceText goal={goal} />
+
+                {/* Time elapsed bar */}
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-surface)', height: 3 }}>
+                    <div className="h-full rounded-full" style={{ width: `${goal.time_elapsed_pct}%`, background: 'var(--color-text-muted)', opacity: 0.4 }} />
+                  </div>
+                  <span className="text-[10px] tabular-nums shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                    เวลาผ่าน {goal.time_elapsed_pct}%
+                  </span>
+                </div>
+
+                {/* Expand history button */}
+                <button
+                  onClick={() => setExpanded(isExpanded ? null : goal.id)}
+                  className="flex items-center gap-1 mt-3 text-xs"
+                  style={{ color: 'var(--color-accent-blue)' }}
+                >
+                  {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {isExpanded ? 'ซ่อนย้อนหลัง' : 'ดูย้อนหลัง'}
+                </button>
+
+                {isExpanded && <GoalHistory goalId={goal.id} />}
               </div>
             )
           })}
