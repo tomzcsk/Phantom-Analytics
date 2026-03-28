@@ -12,17 +12,28 @@ interface FormModalProps {
 export function FormModal({ open, title, onClose, width = 'w-96', children }: FormModalProps) {
   const contentRef = useRef<HTMLDivElement>(null)
 
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  const wasOpen = useRef(false)
+
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      wasOpen.current = false
+      return
+    }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', handleKey)
-    // Auto-focus first input
-    const input = contentRef.current?.querySelector<HTMLElement>('input, select, textarea')
-    input?.focus()
+    // Auto-focus first input only when modal first opens
+    if (!wasOpen.current) {
+      wasOpen.current = true
+      const input = contentRef.current?.querySelector<HTMLElement>('input, select, textarea')
+      input?.focus()
+    }
     return () => window.removeEventListener('keydown', handleKey)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
