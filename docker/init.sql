@@ -69,6 +69,20 @@ ALTER TABLE sites ADD COLUMN IF NOT EXISTS data_retention_days INT;
 CREATE INDEX IF NOT EXISTS idx_sites_token ON sites (tracking_token)
     WHERE deleted_at IS NULL;
 
+-- ── Goals ───────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS goals (
+    id           UUID        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    site_id      UUID        NOT NULL REFERENCES sites(id),
+    name         TEXT        NOT NULL,
+    event_match  TEXT        NOT NULL,
+    target_value INT         NOT NULL,
+    period       TEXT        NOT NULL CHECK (period IN ('daily', 'weekly', 'monthly')),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_goals_site ON goals (site_id);
+
 -- ── Share Links ─────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS share_links (

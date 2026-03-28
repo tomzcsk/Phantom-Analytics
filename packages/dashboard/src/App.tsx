@@ -18,6 +18,8 @@ import { ActivityLog } from './pages/ActivityLog'
 import { SharedLogin } from './pages/SharedLogin'
 import { PublicDashboard } from './pages/PublicDashboard'
 import { ResetPassword } from './pages/ResetPassword'
+import { Goals } from './pages/Goals'
+import { EventExplorer } from './pages/EventExplorer'
 
 function LoadingSpinner() {
   return (
@@ -88,6 +90,8 @@ function DashboardLayout() {
           <Route path="/sources" element={<Sources />} />
           <Route path="/funnels" element={<Funnels />} />
           <Route path="/journeys" element={<Journeys />} />
+          <Route path="/goals" element={<Goals />} />
+          <Route path="/events" element={<EventExplorer />} />
           <Route path="/settings" element={<AuthGuard requiredRole="developer"><Settings /></AuthGuard>} />
           <Route
             path="/users"

@@ -27,6 +27,7 @@ model Site {
   sessions        Session[]
   funnels         Funnel[]
   click_variables ClickVariable[]
+  goals           Goal[]
   share_links     ShareLink[]
   user_sites      UserSite[]
 
@@ -177,6 +178,21 @@ model UserSite {
 
   @@id([user_id, site_id])
   @@map("user_sites")
+}
+
+model Goal {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id      String   @db.Uuid
+  name         String
+  event_match  String   // event_type or custom_name to match
+  target_value Int
+  period       String   // 'daily' | 'weekly' | 'monthly'
+  created_at   DateTime @default(now()) @db.Timestamptz
+
+  site Site @relation(fields: [site_id], references: [id])
+
+  @@index([site_id])
+  @@map("goals")
 }
 
 model ShareLink {

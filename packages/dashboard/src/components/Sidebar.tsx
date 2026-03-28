@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, FileText, MousePointerClick, Globe, Filter, GitBranch, ChevronDown, Plus, Settings, LogOut, Users, ScrollText } from 'lucide-react'
+import { LayoutDashboard, FileText, MousePointerClick, Globe, Filter, GitBranch, ChevronDown, Plus, Settings, LogOut, Users, ScrollText, Target, Search } from 'lucide-react'
 import { useSite } from '../context/SiteContext'
 import { useAuth } from '../context/AuthContext'
 import { apiPost } from '../lib/api'
@@ -14,6 +14,8 @@ const NAV_ITEMS = [
   { to: '/sources', icon: Globe, label: 'แหล่งที่มา' },
   { to: '/funnels', icon: Filter, label: 'ช่องทาง' },
   { to: '/journeys', icon: GitBranch, label: 'เส้นทาง' },
+  { to: '/goals', icon: Target, label: 'เป้าหมาย' },
+  { to: '/events', icon: Search, label: 'Event Explorer' },
 ] as const
 
 function AddSiteModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
