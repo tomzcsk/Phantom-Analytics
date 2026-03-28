@@ -1,11 +1,11 @@
 {
   "project": "Phantom Analytics",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "ระบบวิเคราะห์เว็บแบบ self-hosted ที่เน้นความเป็นส่วนตัว",
-  "last_updated": "2026-03-27",
+  "last_updated": "2026-03-28",
   "overall_progress": {
-    "total_features": 51,
-    "completed": 51,
+    "total_features": 55,
+    "completed": 55,
     "in_progress": 0,
     "pending": 0,
     "percentage": 100
@@ -1031,6 +1031,86 @@
           "checkpoint": "Login → ดู Activity Log → เห็น log เข้าสู่ระบบ + ทุก action"
         }
       ]
+    },
+    {
+      "id": "E12",
+      "title": "Public API, Embed Widget & Campaign Report",
+      "description": "v2.0 Sprint 8 — Public REST API สำหรับเข้าถึงข้อมูลจากภายนอก, embed widget ฝังใน app ลูกค้า, รายงานแคมเปญ UTM",
+      "status": "done",
+      "priority": "high",
+      "source_ref": "v1.3-v2.0-roadmap.md#sprint-8",
+      "features": [
+        {
+          "id": "E12-F1",
+          "title": "Public REST API with API key authentication",
+          "description": "API endpoints /api/v1/stats, /api/v1/timeseries, /api/v1/pages, /api/v1/sources — ใช้ X-API-Key header, API key CRUD + management UI",
+          "status": "done",
+          "priority": "high",
+          "acceptance_criteria": [
+            "สร้าง API key ได้จาก Settings",
+            "Key แสดงครั้งเดียวตอนสร้าง เก็บเฉพาะ hash",
+            "GET /api/v1/stats ตอบ KPIs (pageviews, visitors, bounce, duration)",
+            "GET /api/v1/timeseries ตอบ time-bucketed data",
+            "GET /api/v1/pages ตอบ top pages",
+            "GET /api/v1/sources ตอบ UTM breakdown",
+            "Key หมดอายุแล้วตอบ 401",
+            "บันทึก last_used ทุกครั้งที่ใช้"
+          ],
+          "tech": ["Fastify", "SHA-256", "Prisma", "React"],
+          "estimated_hours": 8,
+          "checkpoint": "สร้าง API key จาก Settings → curl -H 'X-API-Key: pa_xxx' /api/v1/stats → ได้ JSON response"
+        },
+        {
+          "id": "E12-F2",
+          "title": "Embeddable analytics widget",
+          "description": "Lightweight /embed.js script ที่ลูกค้าฝังใน app — แสดง mini analytics widget (pageviews, visitors, bounce, duration) ดึงจาก Public API",
+          "status": "done",
+          "priority": "medium",
+          "acceptance_criteria": [
+            "Script < 3KB ไม่มี dependencies",
+            "ใช้ data-phantom-embed + data-api-key attributes",
+            "แสดง widget สไตล์ dark theme ตรง Phantom",
+            "Settings แสดง embed code snippet พร้อมคัดลอก"
+          ],
+          "tech": ["Vanilla JS", "XHR"],
+          "estimated_hours": 4,
+          "checkpoint": "ฝัง <script data-phantom-embed data-api-key='pa_xxx' src='/embed.js'></script> ในหน้า HTML → แสดง widget"
+        },
+        {
+          "id": "E12-F3",
+          "title": "Campaign report page",
+          "description": "หน้า /campaigns — ตาราง UTM campaigns + KPI per campaign + กราฟ timeseries เปรียบเทียบ top 5 + period-over-period comparison",
+          "status": "done",
+          "priority": "high",
+          "acceptance_criteria": [
+            "แสดงตาราง campaigns ทั้งหมด (campaign, source, medium, visitors, pageviews, bounce, duration, conversions)",
+            "คลิกเลือก campaign ดูรายละเอียด",
+            "กราฟ Line chart เปรียบเทียบ top 5 campaigns",
+            "แสดง % เปลี่ยนแปลงเทียบช่วงก่อนหน้า",
+            "Export CSV ได้",
+            "เมนูแคมเปญใน Sidebar"
+          ],
+          "tech": ["React", "Recharts", "Fastify", "TimescaleDB"],
+          "estimated_hours": 8,
+          "checkpoint": "เปิดหน้า /campaigns → เห็นตาราง UTM campaigns + กราฟเปรียบเทียบ + คลิกดู detail"
+        },
+        {
+          "id": "E12-F4",
+          "title": "API key management UI in Settings",
+          "description": "เพิ่ม API Keys card ใน Settings page — สร้าง/ดู/ลบ API keys + แสดง embed code + curl example",
+          "status": "done",
+          "priority": "high",
+          "acceptance_criteria": [
+            "สร้าง key ผ่าน modal → แสดง full key ครั้งเดียว",
+            "แสดง key_prefix + last_used ในรายการ",
+            "ลบ key ผ่าน ConfirmDialog",
+            "แสดง embed code snippet + curl example หลังสร้าง"
+          ],
+          "tech": ["React", "Fastify"],
+          "estimated_hours": 4,
+          "checkpoint": "สร้าง API key จาก Settings → เห็น key + embed code + curl example → ลบได้"
+        }
+      ]
     }
   ],
   "implementation_order": [
@@ -1080,7 +1160,11 @@
     "E8-F2",
     "E10-F1",
     "E10-F2",
-    "E10-F3"
+    "E10-F3",
+    "E12-F1",
+    "E12-F2",
+    "E12-F3",
+    "E12-F4"
   ],
   "status_legend": {
     "pending": "Not started",

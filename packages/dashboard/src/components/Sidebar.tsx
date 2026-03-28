@@ -262,7 +262,7 @@ export function Sidebar() {
         )}
 
         <p className="text-xs px-3 pt-2" style={{ color: 'var(--color-text-muted)' }}>
-          v1.0.0 · โฮสต์ด้วยตัวเอง
+          v2.0.0 · โฮสต์ด้วยตัวเอง
         </p>
       </div>
     </aside>
