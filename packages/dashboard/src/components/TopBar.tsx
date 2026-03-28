@@ -3,6 +3,7 @@ import { Clock, ChevronDown } from 'lucide-react'
 import { useTimezone, TIMEZONES } from '../context/TimezoneContext'
 import { FormModal } from './FormModal'
 import { DateRangePicker } from './DateRangePicker'
+import { FilterBar } from './FilterBar'
 
 function formatTime(tz: string): string {
   return new Date().toLocaleString('th-TH', {
@@ -34,6 +35,8 @@ export function TopBar() {
         className="h-12 flex items-center justify-end gap-3 px-6 border-b shrink-0"
         style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-card)' }}
       >
+        <FilterBar />
+        <div className="w-px h-5" style={{ background: 'var(--color-border)' }} />
         <DateRangePicker />
         <button
           onClick={() => setShowPicker(true)}

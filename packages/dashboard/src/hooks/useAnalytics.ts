@@ -18,16 +18,18 @@ import type {
 } from '@phantom/shared'
 import { apiGet } from '../lib/api'
 import { useTimezone } from '../context/TimezoneContext'
+import { useFilter } from '../context/FilterContext'
 
-function rangeParams(siteId: string, range: DateRange, tz: string): string {
-  return `site_id=${encodeURIComponent(siteId)}&from=${range.from}&to=${range.to}&tz=${encodeURIComponent(tz)}`
+function rangeParams(siteId: string, range: DateRange, tz: string, filterParams = ''): string {
+  return `site_id=${encodeURIComponent(siteId)}&from=${range.from}&to=${range.to}&tz=${encodeURIComponent(tz)}${filterParams}`
 }
 
 export function useOverview(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['overview', siteId, range, timezone.value],
-    queryFn: () => apiGet<OverviewResponse>(`/analytics/overview?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['overview', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<OverviewResponse>(`/analytics/overview?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -36,14 +38,14 @@ export function useOverview(siteId: string, range: DateRange) {
 
 export function useTimeseries(siteId: string, range: DateRange, compare = false) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['timeseries', siteId, range, timezone.value, compare],
+    queryKey: ['timeseries', siteId, range, timezone.value, compare, filters],
     queryFn: () => {
-      const base = rangeParams(siteId, range, timezone.value)
+      const base = rangeParams(siteId, range, timezone.value, filterParams)
       if (compare) {
         return apiGet<TimeseriesResponse>(`/analytics/timeseries?${base}&compare=true`)
       }
-      // Backward compatible: plain array wrapped into response shape
       return apiGet<TimeseriesPoint[]>(`/analytics/timeseries?${base}`).then(
         (current) => ({ current }) as TimeseriesResponse,
       )
@@ -56,9 +58,10 @@ export function useTimeseries(siteId: string, range: DateRange, compare = false)
 
 export function useEntryExitPages(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['entry-exit-pages', siteId, range, timezone.value],
-    queryFn: () => apiGet<EntryExitPagesResponse>(`/analytics/entry-exit-pages?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['entry-exit-pages', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<EntryExitPagesResponse>(`/analytics/entry-exit-pages?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -67,9 +70,10 @@ export function useEntryExitPages(siteId: string, range: DateRange) {
 
 export function usePages(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['pages', siteId, range, timezone.value],
-    queryFn: () => apiGet<PageStat[]>(`/analytics/pages?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['pages', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<PageStat[]>(`/analytics/pages?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -78,10 +82,11 @@ export function usePages(siteId: string, range: DateRange) {
 
 export function useSources(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['sources', siteId, range, timezone.value],
+    queryKey: ['sources', siteId, range, timezone.value, filters],
     queryFn: () =>
-      apiGet<SourcesAnalyticsResponse>(`/analytics/sources?${rangeParams(siteId, range, timezone.value)}`),
+      apiGet<SourcesAnalyticsResponse>(`/analytics/sources?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -90,10 +95,11 @@ export function useSources(siteId: string, range: DateRange) {
 
 export function useDevices(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['devices', siteId, range, timezone.value],
+    queryKey: ['devices', siteId, range, timezone.value, filters],
     queryFn: () =>
-      apiGet<DeviceAnalyticsResponse>(`/analytics/devices?${rangeParams(siteId, range, timezone.value)}`),
+      apiGet<DeviceAnalyticsResponse>(`/analytics/devices?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -102,9 +108,10 @@ export function useDevices(siteId: string, range: DateRange) {
 
 export function useGeo(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['geo', siteId, range, timezone.value],
-    queryFn: () => apiGet<GeoStat[]>(`/analytics/geo?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['geo', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<GeoStat[]>(`/analytics/geo?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -113,9 +120,10 @@ export function useGeo(siteId: string, range: DateRange) {
 
 export function useTimezones(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['timezones', siteId, range, timezone.value],
-    queryFn: () => apiGet<TimezoneStat[]>(`/analytics/timezones?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['timezones', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<TimezoneStat[]>(`/analytics/timezones?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -135,10 +143,11 @@ export function useRegions(siteId: string, range: DateRange, countryCode: string
 
 export function useUtmSources(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['utm-sources', siteId, range, timezone.value],
+    queryKey: ['utm-sources', siteId, range, timezone.value, filters],
     queryFn: () =>
-      apiGet<UtmStat[]>(`/analytics/sources/utm?${rangeParams(siteId, range, timezone.value)}`),
+      apiGet<UtmStat[]>(`/analytics/sources/utm?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -206,9 +215,10 @@ export function useSessionEvents(sessionId: string) {
 
 export function useScrollDepth(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['scroll-depth', siteId, range, timezone.value],
-    queryFn: () => apiGet<ScrollDepthStat[]>(`/analytics/scroll-depth?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['scroll-depth', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<ScrollDepthStat[]>(`/analytics/scroll-depth?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),
@@ -217,9 +227,10 @@ export function useScrollDepth(siteId: string, range: DateRange) {
 
 export function useClicks(siteId: string, range: DateRange) {
   const { timezone } = useTimezone()
+  const { filterParams, filters } = useFilter()
   return useQuery({
-    queryKey: ['clicks', siteId, range, timezone.value],
-    queryFn: () => apiGet<ClickStat[]>(`/analytics/clicks?${rangeParams(siteId, range, timezone.value)}`),
+    queryKey: ['clicks', siteId, range, timezone.value, filters],
+    queryFn: () => apiGet<ClickStat[]>(`/analytics/clicks?${rangeParams(siteId, range, timezone.value, filterParams)}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
     enabled: Boolean(siteId),

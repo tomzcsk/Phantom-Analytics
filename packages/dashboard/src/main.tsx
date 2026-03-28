@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext'
 import { SiteProvider } from './context/SiteContext'
 import { DateRangeProvider } from './context/DateRangeContext'
 import { TimezoneProvider } from './context/TimezoneContext'
+import { FilterProvider } from './context/FilterContext'
 import './index.css'
 import { App } from './App'
 
@@ -32,7 +33,9 @@ createRoot(root).render(
           <SiteProvider>
             <TimezoneProvider>
               <DateRangeProvider>
-                <App />
+                <FilterProvider>
+                  <App />
+                </FilterProvider>
               </DateRangeProvider>
             </TimezoneProvider>
           </SiteProvider>

@@ -42,6 +42,9 @@ const siteRangeSchema = z.object({
   from: z.string().regex(datePattern, 'Expected YYYY-MM-DD'),
   to: z.string().regex(datePattern, 'Expected YYYY-MM-DD'),
   tz: z.string().default('Asia/Bangkok'),
+  filter_country: z.string().optional(),
+  filter_device: z.enum(['desktop', 'mobile', 'tablet']).optional(),
+  filter_source: z.enum(['direct', 'organic', 'referral', 'social', 'email', 'paid']).optional(),
 })
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -65,6 +68,30 @@ function pctChange(current: number, previous: number): number {
 
 function n(v: unknown): number {
   return Number(v ?? 0)
+}
+
+/** Build SQL WHERE fragments for optional filters on events table columns.
+ *  Values are Zod-validated enums/strings, safe for Prisma.raw interpolation. */
+function filterSQL(query: { filter_country?: string | undefined; filter_device?: string | undefined; filter_source?: string | undefined }): Prisma.Sql {
+  const parts: string[] = []
+  if (query.filter_country) {
+    const safe = query.filter_country.replace(/'/g, "''").slice(0, 2).toUpperCase()
+    parts.push(`AND country_code = '${safe}'`)
+  }
+  if (query.filter_device) {
+    const safe = query.filter_device.replace(/'/g, "''")
+    parts.push(`AND device_type = '${safe}'`)
+  }
+  if (query.filter_source === 'direct') {
+    parts.push(`AND (referrer IS NULL OR referrer = '')`)
+  } else if (query.filter_source === 'organic') {
+    parts.push(`AND referrer ~* '(google|bing|yahoo|duckduckgo|baidu|yandex)\\.com'`)
+  } else if (query.filter_source === 'social') {
+    parts.push(`AND referrer ~* '(facebook|twitter|instagram|linkedin|tiktok|reddit|youtube)\\.com'`)
+  } else if (query.filter_source === 'referral') {
+    parts.push(`AND referrer IS NOT NULL AND referrer != '' AND referrer !~* '(google|bing|yahoo|duckduckgo|baidu|yandex|facebook|twitter|instagram|linkedin|tiktok|reddit|youtube)\\.com'`)
+  }
+  return parts.length > 0 ? Prisma.raw(parts.join(' ')) : Prisma.empty
 }
 
 /** Build safe Prisma.raw fragments for timezone-aware date boundaries.
@@ -111,7 +138,7 @@ type ClickRow = { element_id: string; url: string; click_count: bigint; unique_c
 
 // ── Core metrics query (used by overview for current & previous period) ────
 
-async function fetchMetrics(siteId: string, from: string, to: string, tz = 'Asia/Bangkok') {
+async function fetchMetrics(siteId: string, from: string, to: string, tz = 'Asia/Bangkok', filters: Prisma.Sql = Prisma.empty) {
   const { fromTs, toTs } = tzBounds(from, to, tz)
   const rows = await prisma.$queryRaw<StatsRow[]>`
     WITH pv AS (
@@ -122,6 +149,7 @@ async function fetchMetrics(siteId: string, from: string, to: string, tz = 'Asia
       WHERE site_id    = ${siteId}::uuid
         AND timestamp >= ${fromTs}
         AND timestamp <  ${toTs}
+        ${filters}
     ),
     dur AS (
       SELECT COALESCE(AVG(time_on_page), 0) AS avg_session_duration
@@ -131,6 +159,7 @@ async function fetchMetrics(siteId: string, from: string, to: string, tz = 'Asia
         AND time_on_page IS NOT NULL
         AND timestamp >= ${fromTs}
         AND timestamp <  ${toTs}
+        ${filters}
     ),
     bounce AS (
       SELECT
@@ -144,6 +173,7 @@ async function fetchMetrics(siteId: string, from: string, to: string, tz = 'Asia
         WHERE site_id    = ${siteId}::uuid
           AND timestamp >= ${fromTs}
           AND timestamp <  ${toTs}
+          ${filters}
         GROUP BY session_id
       ) s
     )
@@ -184,11 +214,12 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
 
   app.get('/analytics/overview', { schema: { querystring: siteRangeSchema } }, async (request, reply) => {
     const { site_id, from, to, tz } = request.query
+    const filters = filterSQL(request.query)
 
     const prev = previousPeriod(from, to)
     const [current, previous] = await Promise.all([
-      fetchMetrics(site_id, from, to, tz),
-      fetchMetrics(site_id, prev.from, prev.to, tz),
+      fetchMetrics(site_id, from, to, tz, filters),
+      fetchMetrics(site_id, prev.from, prev.to, tz, filters),
     ])
 
     const response: OverviewResponse = {
@@ -212,7 +243,7 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
     compare: z.enum(['true', 'false']).default('false'),
   })
 
-  async function fetchTimeseries(siteId: string, from: string, to: string, tz: string): Promise<TimeseriesPoint[]> {
+  async function fetchTimeseries(siteId: string, from: string, to: string, tz: string, filters: Prisma.Sql = Prisma.empty): Promise<TimeseriesPoint[]> {
     const days = daysDiff(from, to)
     const { fromTs, toTs } = tzBounds(from, to, tz)
     const safeTz = tz.replace(/'/g, "''")
@@ -241,6 +272,7 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
         WHERE site_id    = ${siteId}::uuid
           AND timestamp >= ${fromTs}
           AND timestamp <  ${toTs}
+          ${filters}
         GROUP BY 1
       )
       SELECT
@@ -263,11 +295,12 @@ export const analyticsRoute: FastifyPluginAsync = async (fastify) => {
 
   app.get('/analytics/timeseries', { schema: { querystring: timeseriesSchema } }, async (request, reply) => {
     const { site_id, from, to, tz, compare } = request.query
-    const current = await fetchTimeseries(site_id, from, to, tz)
+    const filters = filterSQL(request.query)
+    const current = await fetchTimeseries(site_id, from, to, tz, filters)
 
     if (compare === 'true') {
       const prev = previousPeriod(from, to)
-      const previous = await fetchTimeseries(site_id, prev.from, prev.to, tz)
+      const previous = await fetchTimeseries(site_id, prev.from, prev.to, tz, filters)
       const response: TimeseriesResponse = { current, previous }
       return reply.send(response)
     }
